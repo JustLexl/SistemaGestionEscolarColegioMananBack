@@ -6,6 +6,7 @@ const gradosRoutes = require('./grados.routes');
 const gruposRoutes = require('./grupos.routes');
 const materiasRoutes = require('./materias.routes');
 const asistenciasRoutes = require('./asistencias.routes');
+const alumnosRoutes = require('./alumnos.routes');
 
 // Verificación de estado de la API
 router.get('/health', (req, res) => {
@@ -22,5 +23,6 @@ router.use('/grados', gradosRoutes);
 router.use('/grupos', gruposRoutes);
 router.use('/materias', materiasRoutes);
 router.use('/asistencias', asistenciasRoutes);
+router.use('/alumnos', alumnosRoutes);
 
 module.exports = router;
