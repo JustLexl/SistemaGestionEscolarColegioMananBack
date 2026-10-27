@@ -5,6 +5,7 @@ const rolesRoutes = require('./roles.routes');
 const gradosRoutes = require('./grados.routes');
 const gruposRoutes = require('./grupos.routes');
 const materiasRoutes = require('./materias.routes');
+const asistenciasRoutes = require('./asistencias.routes');
 
 // Verificación de estado de la API
 router.get('/health', (req, res) => {
@@ -20,5 +21,6 @@ router.use('/roles', rolesRoutes);
 router.use('/grados', gradosRoutes);
 router.use('/grupos', gruposRoutes);
 router.use('/materias', materiasRoutes);
+router.use('/asistencias', asistenciasRoutes);
 
 module.exports = router;
