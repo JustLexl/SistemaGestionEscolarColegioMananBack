@@ -1,3 +1,4 @@
+
 const asistenciasModel = require('../models/asistencias.model');
 
 class AsistenciasService {
@@ -49,8 +50,31 @@ class AsistenciasService {
     }
   }
 
+  validarAsistenciaDuplicada(alumnoId, fecha, idExcluir = null) {
+    const asistenciaExistente = asistenciasModel.findAll().find(
+      asistencia =>
+        asistencia.alumnoId === Number(alumnoId) &&
+        asistencia.fecha === fecha &&
+        (idExcluir === null || asistencia.id !== Number(idExcluir))
+    );
+
+    if (asistenciaExistente) {
+      const error = new Error(
+        'Este alumno ya tiene una asistencia registrada para esa fecha.'
+      );
+      error.status = 409;
+      throw error;
+    }
+  }
+
   createAsistencia(data) {
     this.validarAsistencia(data);
+
+    this.validarAsistenciaDuplicada(
+      data.alumnoId,
+      data.fecha
+    );
+
     return asistenciasModel.create(data);
   }
 
@@ -64,6 +88,12 @@ class AsistenciasService {
     };
 
     this.validarAsistencia(datosActualizados);
+
+    this.validarAsistenciaDuplicada(
+      datosActualizados.alumnoId,
+      datosActualizados.fecha,
+      id
+    );
 
     return asistenciasModel.update(id, datosActualizados);
   }
