@@ -49,6 +49,7 @@ class AlumnosModel {
       id: nextId,
       matricula: data.matricula.trim(),
       nombre: data.nombre.trim(),
+      fechaNacimiento: data.fechaNacimiento,
       grado: data.grado.trim(),
       grupo: data.grupo.trim(),
       tutor: data.tutor.trim(),
@@ -73,6 +74,9 @@ class AlumnosModel {
       }),
       ...(data.nombre !== undefined && {
         nombre: data.nombre.trim()
+      }),
+      ...(data.fechaNacimiento !== undefined && {
+        fechaNacimiento: data.fechaNacimiento
       }),
       ...(data.grado !== undefined && {
         grado: data.grado.trim()

@@ -46,7 +46,9 @@ app.use((req, res, next) => {
 // Middleware global de manejo de errores
 app.use((err, req, res, next) => {
   console.error('[Error Middleware]:', err.message || err);
-  const statusCode = err.statusCode || 500;
+
+  const statusCode = err.statusCode || err.status || 500;
+
   res.status(statusCode).json({
     success: false,
     error: err.message || 'Error interno del servidor'

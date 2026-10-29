@@ -1,5 +1,5 @@
-
 const asistenciasModel = require('../models/asistencias.model');
+const alumnosModel = require('../models/alumnos.model');
 
 class AsistenciasService {
 
@@ -50,6 +50,26 @@ class AsistenciasService {
     }
   }
 
+  validarAlumnoActivo(alumnoId) {
+    const alumno = alumnosModel.findById(Number(alumnoId));
+
+    if (!alumno) {
+      const error = new Error(
+        `El alumno con ID ${alumnoId} no fue encontrado.`
+      );
+      error.status = 404;
+      throw error;
+    }
+
+    if (alumno.estado !== 'Activo') {
+      const error = new Error(
+        'No se pueden registrar nuevas asistencias a alumnos inactivos.'
+      );
+      error.status = 400;
+      throw error;
+    }
+  }
+
   validarAsistenciaDuplicada(alumnoId, fecha, idExcluir = null) {
     const asistenciaExistente = asistenciasModel.findAll().find(
       asistencia =>
@@ -69,6 +89,8 @@ class AsistenciasService {
 
   createAsistencia(data) {
     this.validarAsistencia(data);
+
+    this.validarAlumnoActivo(data.alumnoId);
 
     this.validarAsistenciaDuplicada(
       data.alumnoId,
