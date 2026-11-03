@@ -2,9 +2,10 @@
 -- SISTEMA DE GESTIÓN ESCOLAR - COLEGIO MANANTIAL
 -- ESQUEMA DE BASE DE DATOS PARA LAS TABLAS DE:
 -- 1. Roles y Usuarios
--- 2. Grados Escolares
--- 3. Grupos
--- 4. Materias
+-- 2. Profesores
+-- 3. Grados Escolares
+-- 4. Grupos
+-- 5. Materias
 -- =============================================================================
 
 -- Desactivar temporalmente revisión de claves foráneas para recreación limpia
@@ -14,6 +15,7 @@ DROP TABLE IF EXISTS materia_grupos;
 DROP TABLE IF EXISTS grupo_materias;
 DROP TABLE IF EXISTS materias;
 DROP TABLE IF EXISTS grupos;
+DROP TABLE IF EXISTS profesores;
 DROP TABLE IF EXISTS grados;
 DROP TABLE IF EXISTS roles;
 
@@ -36,7 +38,21 @@ CREATE TABLE roles (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- 2. TABLA: grados
+-- 2. TABLA: profesores
+-- Almacena el catálogo de docentes y permite su baja lógica.
+-- -----------------------------------------------------------------------------
+CREATE TABLE profesores (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(150) NOT NULL,
+    cedula VARCHAR(30) NOT NULL UNIQUE,
+    estado ENUM('Activo', 'Inactivo') NOT NULL DEFAULT 'Activo',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_profesores_estado (estado)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- 3. TABLA: grados
 -- Almacena los niveles y grados escolares del colegio (1° a 6° de Primaria).
 -- -----------------------------------------------------------------------------
 CREATE TABLE grados (
@@ -49,7 +65,7 @@ CREATE TABLE grados (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- 3. TABLA: grupos
+-- 4. TABLA: grupos
 -- Almacena las aulas/secciones de cada grado escolar.
 -- -----------------------------------------------------------------------------
 CREATE TABLE grupos (
@@ -73,13 +89,14 @@ CREATE TABLE grupos (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (grado_id) REFERENCES grados(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    FOREIGN KEY (profesor_id) REFERENCES profesores(id) ON UPDATE CASCADE ON DELETE SET NULL,
     INDEX idx_grupos_grado (grado_id),
     INDEX idx_grupos_turno (turno),
     INDEX idx_grupos_estado (estado)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- 4. TABLA: materias
+-- 5. TABLA: materias
 -- Almacena el catálogo y plan de estudios de asignaturas impartidas.
 -- -----------------------------------------------------------------------------
 CREATE TABLE materias (
@@ -101,13 +118,14 @@ CREATE TABLE materias (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (grado_id) REFERENCES grados(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    FOREIGN KEY (profesor_id) REFERENCES profesores(id) ON UPDATE CASCADE ON DELETE SET NULL,
     INDEX idx_materias_grado (grado_id),
     INDEX idx_materias_estado (estado),
     INDEX idx_materias_codigo (codigo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- 5. TABLA INTERMEDIA: materia_grupos (Muchos a Muchos: Materias <-> Grupos)
+-- 6. TABLA INTERMEDIA: materia_grupos (Muchos a Muchos: Materias <-> Grupos)
 -- -----------------------------------------------------------------------------
 CREATE TABLE materia_grupos (
     materia_id INT NOT NULL,
@@ -134,6 +152,16 @@ INSERT INTO roles (id, nombre, puesto, correo, estado) VALUES
 (10, 'Lic. Jorge Hernández', 'Administrativo', 'jorge.hernandez@manantial.edu.mx', 'Inactivo'),
 (11, 'Psic. Ana Lucía Morales', 'Administrativo', 'ana.morales@manantial.edu.mx', 'Activo'),
 (12, 'Ing. Carlos Fuentes', 'Administrativo', 'carlos.fuentes@manantial.edu.mx', 'Activo');
+
+-- Profesores
+INSERT INTO profesores (id, nombre, cedula, estado) VALUES
+(1, 'Profra. Carmen Salinas', 'DOC-2018-042', 'Activo'),
+(2, 'Profra. Elena Garro', 'DOC-2019-018', 'Activo'),
+(3, 'Prof. Roberto Carlos Valdés', 'DOC-2021-095', 'Activo'),
+(4, 'Profra. Gabriela Mistral', 'DOC-2016-011', 'Activo'),
+(5, 'Prof. Alfonso Reyes Ochoa', 'DOC-2022-073', 'Activo'),
+(6, 'Profra. Sofía Ramírez', 'DOC-2020-031', 'Inactivo'),
+(7, 'Prof. Miguel Ángel Torres', 'DOC-2017-088', 'Activo');
 
 -- Grados
 INSERT INTO grados (id, nombre, nivel, ciclo) VALUES
