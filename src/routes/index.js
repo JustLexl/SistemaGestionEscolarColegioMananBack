@@ -9,6 +9,7 @@ const asistenciasRoutes = require('./asistencias.routes');
 const alumnosRoutes = require('./alumnos.routes');
 const profesoresRoutes = require('./profesores.routes');
 const calificacionesRoutes = require('./calificaciones.routes');
+const authRoutes = require('./auth.routes');
 
 // Verificación de estado de la API
 router.get('/health', (req, res) => {
@@ -28,5 +29,6 @@ router.use('/asistencias', asistenciasRoutes);
 router.use('/alumnos', alumnosRoutes);
 router.use('/profesores', profesoresRoutes);
 router.use('/calificaciones', calificacionesRoutes);
+router.use('/auth', authRoutes);
 
 module.exports = router;
