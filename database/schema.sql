@@ -11,6 +11,7 @@
 -- Desactivar temporalmente revisión de claves foráneas para recreación limpia
 SET FOREIGN_KEY_CHECKS = 0;
 
+DROP TABLE IF EXISTS calificaciones;
 DROP TABLE IF EXISTS materia_grupos;
 DROP TABLE IF EXISTS grupo_materias;
 DROP TABLE IF EXISTS materias;
@@ -132,6 +133,30 @@ CREATE TABLE materia_grupos (
     grupo_nombre VARCHAR(30) NOT NULL,
     PRIMARY KEY (materia_id, grupo_nombre),
     FOREIGN KEY (materia_id) REFERENCES materias(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- 6. TABLA: calificaciones
+-- Almacena las evaluaciones de los alumnos por materia y periodo.
+-- -----------------------------------------------------------------------------
+CREATE TABLE calificaciones (
+    id VARCHAR(20) PRIMARY KEY,
+    alumno VARCHAR(150) NOT NULL,
+    matricula VARCHAR(30) NOT NULL,
+    grado VARCHAR(50) NOT NULL,
+    grupo VARCHAR(20) NOT NULL,
+    materia VARCHAR(150) NOT NULL,
+    periodo VARCHAR(50) NOT NULL,
+    calificacion DECIMAL(3,1) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_calificaciones_matricula_materia_periodo (
+        matricula,
+        materia,
+        periodo
+    ),
+    CONSTRAINT chk_calificaciones_rango
+        CHECK (calificacion BETWEEN 0 AND 10)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
