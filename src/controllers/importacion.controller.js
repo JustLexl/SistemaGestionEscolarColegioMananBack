@@ -113,7 +113,7 @@ const plantillas = {
   ],
 
   profesores: [
-    'nombre', 'puesto', 'correo', 'estado'
+    'nombre', 'puesto', 'correo', 'cedula', 'estado'
   ],
 
   grados: [

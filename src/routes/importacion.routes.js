@@ -19,7 +19,7 @@ const alumnosService = require('../services/alumnos.service');
 const gradosService = require('../services/grados.service');
 const gruposService = require('../services/grupos.service');
 const materiasService = require('../services/materias.service');
-const rolesService = require('../services/roles.service');
+const usuariosProfesoresService = require('../services/usuarios-profesores.service');
 
 const router = express.Router();
 
@@ -100,6 +100,7 @@ const plantillas = {
     'nombre',
     'puesto',
     'correo',
+    'cedula',
     'estado'
   ],
 
@@ -184,7 +185,7 @@ router.post(
   '/profesores/confirmar',
   procesarConfirmacion(
     validarProfesores,
-    profesor => rolesService.createRol(profesor),
+    profesor => usuariosProfesoresService.crearUsuarioConPerfilSiCorresponde(profesor),
     'profesores'
   )
 );

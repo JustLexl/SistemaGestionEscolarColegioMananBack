@@ -6,6 +6,7 @@ const gradosModel = require('../models/grados.model');
 const materiasModel = require('../models/materias.model');
 const rolesService = require('./roles.service');
 const rolesModel = require('../models/roles.model');
+const profesoresModel = require('../models/profesores.model');
 
 // VALIDACIÓN DE ALUMNOS
 
@@ -531,8 +532,9 @@ function validarProfesores(registros) {
   const validos = [];
   const errores = [];
   const correos = new Set();
+  const cedulas = new Set();
 
-  const campos = ['nombre', 'puesto', 'correo', 'estado'];
+  const campos = ['nombre', 'puesto', 'correo', 'cedula', 'estado'];
 
   // Comprueba que existan registros
   if (!Array.isArray(registros) || registros.length === 0) {
@@ -570,7 +572,7 @@ function validarProfesores(registros) {
     }
 
     // Verifica los campos obligatorios
-    for (const campo of ['nombre', 'correo']) {
+    for (const campo of ['nombre', 'correo', 'cedula']) {
       if (!datos[campo]) {
         motivos.push(`El campo ${campo} es obligatorio.`);
       }
@@ -612,6 +614,19 @@ function validarProfesores(registros) {
 
       if (existente) {
         motivos.push('El correo ya está registrado en el sistema.');
+      }
+    }
+
+    const cedula = datos.cedula.toLowerCase();
+    if (cedula) {
+      if (cedulas.has(cedula)) {
+        motivos.push('Cédula duplicada dentro del archivo.');
+      } else {
+        cedulas.add(cedula);
+      }
+
+      if (profesoresModel.findByCedula(datos.cedula)) {
+        motivos.push('La cédula ya está registrada en el sistema.');
       }
     }
 
