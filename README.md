@@ -7,6 +7,7 @@ Este proyecto implementa la lógica, almacenamiento de datos, validaciones y end
 - **Grados** (1° a 6° de Primaria)
 - **Grupos** (Aulas, turnos, cupos, profesores asignados, estado)
 - **Roles y Usuarios** (Administrativo, Directivos, Profesores con correo y estado)
+- **Importación de Datos** (Carga de alumnos, profesores, grados, grupos y materias mediante archivos CSV y Excel, con validación y confirmación de registros)
 
 ---
 
@@ -33,18 +34,23 @@ SistemaColegioManantialBack/
     │   ├── roles.service.js
     │   ├── grados.service.js
     │   ├── grupos.service.js
+    │   ├── importacion.service.js  #Validaciones de registros
     │   └── materias.service.js
     ├── controllers/           # Controladores HTTP (Req, Res, Códigos de estado)
     │   ├── roles.controller.js
     │   ├── grados.controller.js
     │   ├── grupos.controller.js
+    │   ├── importacion.controller.js
     │   └── materias.controller.js
     └── routes/                # Definición de rutas y endpoints REST
-        ├── index.js           # Enrutador central (/api)
-        ├── roles.routes.js    # /api/roles
-        ├── grados.routes.js   # /api/grados
-        ├── grupos.routes.js   # /api/grupos
-        └── materias.routes.js # /api/materias
+    │    ├── index.js           # Enrutador central (/api)
+    │    ├── roles.routes.js    # /api/roles
+    │    ├── grados.routes.js   # /api/grados
+    │    ├── grupos.routes.js   # /api/grupos
+    │    ├── importacion.routes.js  # /api/importacion
+    │    └── materias.routes.js # /api/materias
+    └── utils/                  # Procesar archivos
+          ├── excel.parser.js   # Lectura de archivo CVS y Excel
 ```
 
 ---
@@ -55,6 +61,7 @@ SistemaColegioManantialBack/
 ```bash
 npm install
 ```
+Importante: Se agregaron las dependencias `multer` y `xlsx` para el módulo de importación de datos. Si ya tenías instalado el proyecto anteriormente, ejecuta nuevamente `npm install` para instalar las nuevas dependencias y evitar errores al iniciar el servidor.
 
 ### 2. Modo Desarrollo (con autorecarga en Node 18+)
 ```bash
@@ -125,6 +132,23 @@ El servidor iniciará por defecto en `http://localhost:3000`.
 | `PUT` | `/api/materias/:id` | Actualizar datos de la materia |
 | `DELETE` | `/api/materias/:id` | Eliminar materia por ID |
 | `PATCH` | `/api/materias/:id/dar-de-baja` | Cambiar estado a 'Inactiva' (baja del plan) |
+
+---
+
+### 5. Módulo: Importación de Datos (`/api/importacion`)
+| Método | Endpoint | Descripción |
+| :--- | :--- | :--- |
+| `GET` | `/api/importacion/:entidad/plantilla` | Descargar plantilla CSV (Alumnos, Profesores, Grados, Grupos y Materias) |
+| `POST` | `/api/importacion/alumnos/validar` | Validar archivo CSV/XLSX de alumnos |
+| `POST` | `/api/importacion/alumnos/confirmar` | Registrar alumnos válidos |
+| `POST` | `/api/importacion/profesores/validar` | Validar archivo CSV/XLSX de profesores |
+| `POST` | `/api/importacion/profesores/confirmar` | Registrar profesores válidos |
+| `POST` | `/api/importacion/grados/validar` | Validar archivo CSV/XLSX de grados |
+| `POST` | `/api/importacion/grados/confirmar` | Registrar grados válidos |
+| `POST` | `/api/importacion/grupos/validar` | Validar archivo CSV/XLSX de grupos |
+| `POST` | `/api/importacion/grupos/confirmar` | Registrar grupos válidos |
+| `POST` | `/api/importacion/materias/validar` | Validar archivo CSV/XLSX de materias |
+| `POST` | `/api/importacion/materias/confirmar` | Registrar materias válidas |
 
 ---
 
