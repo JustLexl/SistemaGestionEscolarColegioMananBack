@@ -1,0 +1,243 @@
+const assert = require('node:assert/strict');
+
+const BASE_URL = process.env.DEMO2_API_URL || 'http://127.0.0.1:3001/api';
+
+async function request(path, options = {}, expectedStatus = 200) {
+  const response = await fetch(`${BASE_URL}${path}`, {
+    ...options,
+    headers: options.body && !(options.body instanceof FormData)
+      ? { 'Content-Type': 'application/json', ...options.headers }
+      : options.headers,
+  });
+  const rawBody = await response.text();
+  let body = rawBody;
+  try {
+    body = JSON.parse(rawBody);
+  } catch {
+    // Las plantillas CSV se conservan como texto; las APIs JSON se analizan arriba.
+  }
+  assert.equal(
+    response.status,
+    expectedStatus,
+    `${options.method || 'GET'} ${path}: se esperaba ${expectedStatus} y se recibió ${response.status}: ${JSON.stringify(body)}`,
+  );
+  return body;
+}
+
+async function validarCsv(csv, nombre = 'profesores.csv') {
+  const form = new FormData();
+  form.append('archivo', new Blob([csv], { type: 'text/csv' }), nombre);
+  return request('/importacion/profesores/validar', { method: 'POST', body: form });
+}
+
+async function main() {
+  const profesoresAntes = await request('/profesores');
+  assert.equal(
+    profesoresAntes.data.some(profesor => profesor.nombre === 'Profesor Relacionado Demo'),
+    false,
+  );
+
+  const altaProfesor = await request('/roles', {
+    method: 'POST',
+    body: JSON.stringify({
+      nombre: 'Profesor Relacionado Demo',
+      correo: 'profesor.relacionado.demo@manantial.edu.mx',
+      puesto: 'Profesores',
+      cedula: 'DOC-DEMO-REL-001',
+      estado: 'Activo',
+    }),
+  }, 201);
+  assert.equal(altaProfesor.profesor.usuarioId, altaProfesor.data.id);
+  assert.notEqual(altaProfesor.profesor.id, altaProfesor.data.id);
+
+  const altaDirectivo = await request('/roles', {
+    method: 'POST',
+    body: JSON.stringify({
+      nombre: 'Usuario Directivo Demo',
+      correo: 'usuario.directivo.demo@manantial.edu.mx',
+      puesto: 'Directivos',
+      estado: 'Activo',
+    }),
+  }, 201);
+  assert.equal(altaDirectivo.profesor, null);
+
+  const altaAdministrativo = await request('/roles', {
+    method: 'POST',
+    body: JSON.stringify({
+      nombre: 'Usuario Administrativo Demo',
+      correo: 'usuario.administrativo.demo@manantial.edu.mx',
+      puesto: 'Administrativo',
+      estado: 'Activo',
+    }),
+  }, 201);
+  assert.equal(altaAdministrativo.profesor, null);
+
+  const usuarioCambio = await request('/roles', {
+    method: 'POST',
+    body: JSON.stringify({
+      nombre: 'Usuario Cambio Rol Demo',
+      correo: 'usuario.cambio.rol.demo@manantial.edu.mx',
+      puesto: 'Administrativo',
+      estado: 'Activo',
+    }),
+  }, 201);
+  const cambioProfesor = await request(`/roles/${usuarioCambio.data.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ puesto: 'Profesores', cedula: 'DOC-CAMBIO-ROL-001' }),
+  });
+  const perfilCambioId = cambioProfesor.profesor.id;
+  assert.equal(cambioProfesor.profesor.estado, 'Activo');
+
+  const cambioDirectivo = await request(`/roles/${usuarioCambio.data.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ puesto: 'Directivos' }),
+  });
+  assert.equal(cambioDirectivo.profesor.id, perfilCambioId);
+  assert.equal(cambioDirectivo.profesor.estado, 'Inactivo');
+
+  const reactivado = await request(`/roles/${usuarioCambio.data.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ puesto: 'Profesores' }),
+  });
+  assert.equal(reactivado.profesor.id, perfilCambioId);
+  assert.equal(reactivado.profesor.estado, 'Activo');
+
+  const inactivo = await request(`/roles/${usuarioCambio.data.id}/toggle-estado`, {
+    method: 'PATCH',
+  });
+  assert.equal(inactivo.data.estado, 'Inactivo');
+  assert.equal(inactivo.profesor.estado, 'Inactivo');
+  const activo = await request(`/roles/${usuarioCambio.data.id}/toggle-estado`, {
+    method: 'PATCH',
+  });
+  assert.equal(activo.data.estado, 'Activo');
+  assert.equal(activo.profesor.estado, 'Activo');
+
+  const renombrado = await request(`/roles/${usuarioCambio.data.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ nombre: 'Profesor Nombre Sincronizado Demo' }),
+  });
+  assert.equal(renombrado.profesor.nombre, 'Profesor Nombre Sincronizado Demo');
+
+  const csvValido = [
+    'nombre,puesto,correo,cedula,estado',
+    'Profesor Importado Demo,Profesores,profesor.importado.demo@manantial.edu.mx,DOC-IMPORT-DEMO-001,Activo',
+  ].join('\n');
+  const validacion = await validarCsv(csvValido);
+  assert.equal(validacion.totalValidos, 1);
+  assert.equal(validacion.totalErrores, 0);
+  const importacion = await request('/importacion/profesores/confirmar', {
+    method: 'POST',
+    body: JSON.stringify({ validos: validacion.validos }),
+  }, 201);
+  const profesorImportado = importacion.profesores[0];
+  assert.equal(profesorImportado.profesor.usuarioId, profesorImportado.usuario.id);
+
+  const invalidas = {
+    sinCedula: await validarCsv([
+      'nombre,puesto,correo,cedula,estado',
+      'Profesor Sin Cedula,Profesores,sin.cedula.demo@manantial.edu.mx,,Activo',
+    ].join('\n')),
+    cedulaDuplicada: await validarCsv([
+      'nombre,puesto,correo,cedula,estado',
+      'Profesor Cedula Duplicada,Profesores,cedula.duplicada.demo@manantial.edu.mx,DOC-2019-018,Activo',
+    ].join('\n')),
+    correoDuplicado: await validarCsv([
+      'nombre,puesto,correo,cedula,estado',
+      'Profesor Correo Duplicado,Profesores,elena.garro@manantial.edu.mx,DOC-CORREO-DEMO-001,Activo',
+    ].join('\n')),
+    puestoIncorrecto: await validarCsv([
+      'nombre,puesto,correo,cedula,estado',
+      'Directivo Importado,Directivos,directivo.importado.demo@manantial.edu.mx,DOC-DIRECTIVO-DEMO-001,Activo',
+    ].join('\n')),
+    encabezadosFaltantes: await validarCsv([
+      'nombre,correo',
+      'Fila Incompleta,fila.incompleta.demo@manantial.edu.mx',
+    ].join('\n')),
+  };
+  for (const resultado of Object.values(invalidas)) {
+    assert.ok(resultado.totalErrores > 0);
+    assert.equal(resultado.totalValidos, 0);
+  }
+
+  const calificacionDatos = {
+    matricula: 'CM-2026-005',
+    materia: 'Matemáticas IV',
+    periodo: '1er Trimestre',
+    calificacion: 8.6,
+  };
+  const calificacion = await request('/calificaciones', {
+    method: 'POST',
+    body: JSON.stringify(calificacionDatos),
+  }, 201);
+  await request('/calificaciones', {
+    method: 'POST',
+    body: JSON.stringify(calificacionDatos),
+  }, 409);
+  const calificacionActualizada = await request(`/calificaciones/${calificacion.data.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ calificacion: 9.1 }),
+  });
+  assert.equal(calificacionActualizada.data.calificacion, 9.1);
+  await request(`/calificaciones/${calificacion.data.id}`, { method: 'DELETE' });
+
+  const regresion = {};
+  for (const modulo of [
+    'health',
+    'alumnos',
+    'asistencias',
+    'roles',
+    'grados',
+    'grupos',
+    'materias',
+    'profesores',
+    'calificaciones',
+  ]) {
+    const respuesta = await request(`/${modulo}`);
+    regresion[modulo] = respuesta.success ?? respuesta.status;
+  }
+  await request('/importacion/profesores/plantilla');
+  await request('/auth/logout', { method: 'POST', body: JSON.stringify({}) });
+  await request('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email: '', password: '' }),
+  }, 400);
+  await request('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ email: '' }),
+  }, 400);
+
+  console.log(JSON.stringify({
+    altaProfesor: {
+      usuarioId: altaProfesor.data.id,
+      profesorId: altaProfesor.profesor.id,
+      profesorUsuarioId: altaProfesor.profesor.usuarioId,
+    },
+    altaDirectivo: { usuarioId: altaDirectivo.data.id, profesor: altaDirectivo.profesor },
+    altaAdministrativo: {
+      usuarioId: altaAdministrativo.data.id,
+      profesor: altaAdministrativo.profesor,
+    },
+    cambioRol: {
+      usuarioId: usuarioCambio.data.id,
+      profesorId: perfilCambioId,
+      estadoFinal: renombrado.profesor.estado,
+      nombreFinal: renombrado.profesor.nombre,
+    },
+    importacion: {
+      usuarioId: profesorImportado.usuario.id,
+      profesorId: profesorImportado.profesor.id,
+      profesorUsuarioId: profesorImportado.profesor.usuarioId,
+    },
+    importacionesInvalidas: Object.fromEntries(
+      Object.entries(invalidas).map(([clave, valor]) => [clave, valor.totalErrores]),
+    ),
+    calificaciones: 'GET/POST/PUT/DELETE y duplicado 409 aprobados',
+    regresion,
+  }, null, 2));
+}
+
+main().catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});
