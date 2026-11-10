@@ -1,5 +1,6 @@
 const express = require('express');
 const multer = require('multer');
+
 // Importa las funciones generales del controlador
 const {
   procesarValidacion,
@@ -26,21 +27,45 @@ const router = express.Router();
 // CONFIGURACIÓN DE ARCHIVOS
 // ==================================================
 
-// Permite recibir archivos de hasta 5 MB
+// Permite recibir archivos de hasta 10 MB
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024
+    fileSize: 10 * 1024 * 1024
   }
 });
 
+// Maneja los errores durante la carga de archivos
+function validarArchivo(req, res, next) {
+  upload.single('archivo')(req, res, error => {
+    if (error instanceof multer.MulterError) {
+      if (error.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({
+          success: false,
+          mensaje: 'El archivo supera el tamaño máximo permitido de 10 MB.'
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        mensaje: `Error al cargar el archivo: ${error.message}`
+      });
+    }
+
+    if (error) {
+      return next(error);
+    }
+
+    next();
+  });
+}
 
 // VALIDACIÓN DE ALUMNOS
 // ==================================================
 
 router.post(
   '/alumnos/validar',
-  upload.single('archivo'),
+  validarArchivo,
   procesarValidacion(validarAlumnos, 'alumnos')
 );
 
@@ -49,7 +74,7 @@ router.post(
 
 router.post(
   '/grados/validar',
-  upload.single('archivo'),
+  validarArchivo,
   procesarValidacion(validarGrados, 'grados')
 );
 
@@ -58,7 +83,7 @@ router.post(
 
 router.post(
   '/grupos/validar',
-  upload.single('archivo'),
+  validarArchivo,
   procesarValidacion(validarGrupos, 'grupos')
 );
 
@@ -67,7 +92,7 @@ router.post(
 
 router.post(
   '/materias/validar',
-  upload.single('archivo'),
+  validarArchivo,
   procesarValidacion(validarMaterias, 'materias')
 );
 
@@ -76,7 +101,7 @@ router.post(
 
 router.post(
   '/profesores/validar',
-  upload.single('archivo'),
+  validarArchivo,
   procesarValidacion(validarProfesores, 'profesores')
 );
 
@@ -141,8 +166,8 @@ const plantillas = {
 
 router.get('/:entidad/plantilla', descargarPlantilla);
 
- // CONFIRMACIÓN DE IMPORTACIONES
- // ==================================================
+// CONFIRMACIÓN DE IMPORTACIONES
+// ==================================================
 
 router.post(
   '/alumnos/confirmar',
