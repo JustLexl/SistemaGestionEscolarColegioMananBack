@@ -1,4 +1,5 @@
 const rolesService = require('../services/roles.service');
+const usuariosProfesoresService = require('../services/usuarios-profesores.service');
 
 class RolesController {
   getAll(req, res, next) {
@@ -9,11 +10,7 @@ class RolesController {
         puesto: req.query.puesto
       };
       const roles = rolesService.getAllRoles(filters);
-      res.status(200).json({
-        success: true,
-        count: roles.length,
-        data: roles
-      });
+      res.status(200).json({ success: true, count: roles.length, data: roles });
     } catch (error) {
       next(error);
     }
@@ -21,10 +18,9 @@ class RolesController {
 
   getById(req, res, next) {
     try {
-      const rol = rolesService.getRolById(req.params.id);
       res.status(200).json({
         success: true,
-        data: rol
+        data: rolesService.getRolById(req.params.id)
       });
     } catch (error) {
       next(error);
@@ -33,11 +29,13 @@ class RolesController {
 
   create(req, res, next) {
     try {
-      const newRol = rolesService.createRol(req.body);
+      const resultado = usuariosProfesoresService
+        .crearUsuarioConPerfilSiCorresponde(req.body);
       res.status(201).json({
         success: true,
-        message: `Usuario "${newRol.nombre}" registrado exitosamente`,
-        data: newRol
+        message: `Usuario "${resultado.usuario.nombre}" registrado exitosamente`,
+        data: resultado.usuario,
+        profesor: resultado.profesor
       });
     } catch (error) {
       next(error);
@@ -46,11 +44,15 @@ class RolesController {
 
   update(req, res, next) {
     try {
-      const updated = rolesService.updateRol(req.params.id, req.body);
+      const resultado = usuariosProfesoresService.actualizarUsuarioYPerfil(
+        req.params.id,
+        req.body
+      );
       res.status(200).json({
         success: true,
-        message: `Usuario "${updated.nombre}" actualizado exitosamente`,
-        data: updated
+        message: `Usuario "${resultado.usuario.nombre}" actualizado exitosamente`,
+        data: resultado.usuario,
+        profesor: resultado.profesor
       });
     } catch (error) {
       next(error);
@@ -59,7 +61,7 @@ class RolesController {
 
   delete(req, res, next) {
     try {
-      rolesService.deleteRol(req.params.id);
+      usuariosProfesoresService.eliminarUsuario(req.params.id);
       res.status(200).json({
         success: true,
         message: `Usuario con ID ${req.params.id} eliminado del sistema`
@@ -71,11 +73,13 @@ class RolesController {
 
   toggleEstado(req, res, next) {
     try {
-      const rol = rolesService.toggleRolEstado(req.params.id);
+      const resultado = usuariosProfesoresService
+        .cambiarEstadoUsuario(req.params.id);
       res.status(200).json({
         success: true,
-        message: `Estado de "${rol.nombre}" cambiado a ${rol.estado}`,
-        data: rol
+        message: `Estado de "${resultado.usuario.nombre}" cambiado a ${resultado.usuario.estado}`,
+        data: resultado.usuario,
+        profesor: resultado.profesor
       });
     } catch (error) {
       next(error);
@@ -84,10 +88,9 @@ class RolesController {
 
   getMetrics(req, res, next) {
     try {
-      const metrics = rolesService.getRolesMetrics();
       res.status(200).json({
         success: true,
-        data: metrics
+        data: rolesService.getRolesMetrics()
       });
     } catch (error) {
       next(error);

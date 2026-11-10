@@ -44,12 +44,14 @@ CREATE TABLE roles (
 -- -----------------------------------------------------------------------------
 CREATE TABLE profesores (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NULL UNIQUE,
     nombre VARCHAR(150) NOT NULL,
     cedula VARCHAR(30) NOT NULL UNIQUE,
     estado ENUM('Activo', 'Inactivo') NOT NULL DEFAULT 'Activo',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_profesores_estado (estado)
+    INDEX idx_profesores_estado (estado),
+    FOREIGN KEY (usuario_id) REFERENCES roles(id) ON UPDATE CASCADE ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
@@ -179,14 +181,14 @@ INSERT INTO roles (id, nombre, puesto, correo, estado) VALUES
 (12, 'Ing. Carlos Fuentes', 'Administrativo', 'carlos.fuentes@manantial.edu.mx', 'Activo');
 
 -- Profesores
-INSERT INTO profesores (id, nombre, cedula, estado) VALUES
-(1, 'Profra. Carmen Salinas', 'DOC-2018-042', 'Activo'),
-(2, 'Profra. Elena Garro', 'DOC-2019-018', 'Activo'),
-(3, 'Prof. Roberto Carlos Valdés', 'DOC-2021-095', 'Activo'),
-(4, 'Profra. Gabriela Mistral', 'DOC-2016-011', 'Activo'),
-(5, 'Prof. Alfonso Reyes Ochoa', 'DOC-2022-073', 'Activo'),
-(6, 'Profra. Sofía Ramírez', 'DOC-2020-031', 'Inactivo'),
-(7, 'Prof. Miguel Ángel Torres', 'DOC-2017-088', 'Activo');
+INSERT INTO profesores (id, usuario_id, nombre, cedula, estado) VALUES
+(1, NULL, 'Profra. Carmen Salinas', 'DOC-2018-042', 'Activo'),
+(2, NULL, 'Profra. Elena Garro', 'DOC-2019-018', 'Activo'),
+(3, NULL, 'Prof. Roberto Carlos Valdés', 'DOC-2021-095', 'Activo'),
+(4, NULL, 'Profra. Gabriela Mistral', 'DOC-2016-011', 'Activo'),
+(5, NULL, 'Prof. Alfonso Reyes Ochoa', 'DOC-2022-073', 'Activo'),
+(6, NULL, 'Profra. Sofía Ramírez', 'DOC-2020-031', 'Inactivo'),
+(7, NULL, 'Prof. Miguel Ángel Torres', 'DOC-2017-088', 'Activo');
 
 -- Grados
 INSERT INTO grados (id, nombre, nivel, ciclo) VALUES

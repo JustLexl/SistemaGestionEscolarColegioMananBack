@@ -1,13 +1,10 @@
 const initialProfesores = require('../data/profesores.seed');
 
-/**
- * Modelo de Datos para la entidad Profesores.
- * Maneja el almacenamiento en memoria y métodos CRUD.
- */
 class ProfesoresModel {
   constructor() {
     this.profesores = initialProfesores.map(profesor => ({
       ...profesor,
+      usuarioId: profesor.usuarioId ?? null,
       materias: [...profesor.materias],
       grupos: [...profesor.grupos]
     }));
@@ -23,7 +20,6 @@ class ProfesoresModel {
         profesor.cedula.toLowerCase().includes(texto);
       const matchEstado = !estado ||
         profesor.estado.toLowerCase() === String(estado).toLowerCase();
-
       return matchSearch && matchEstado;
     });
   }
@@ -35,9 +31,16 @@ class ProfesoresModel {
   }
 
   findByCedula(cedula) {
-    const cedulaNormalizada = String(cedula || '').trim().toLowerCase();
+    const normalizada = String(cedula || '').trim().toLowerCase();
     return this.profesores.find(
-      profesor => profesor.cedula.trim().toLowerCase() === cedulaNormalizada
+      profesor => profesor.cedula.trim().toLowerCase() === normalizada
+    ) || null;
+  }
+
+  findByUsuarioId(usuarioId) {
+    if (usuarioId === null || usuarioId === undefined) return null;
+    return this.profesores.find(
+      profesor => String(profesor.usuarioId) === String(usuarioId)
     ) || null;
   }
 
@@ -49,11 +52,12 @@ class ProfesoresModel {
 
     const newProfesor = {
       id: nextId,
+      usuarioId: Number(data.usuarioId),
       nombre: data.nombre.trim(),
       cedula: data.cedula.trim(),
       materias: [],
       grupos: [],
-      estado: 'Activo'
+      estado: data.estado || 'Activo'
     };
 
     this.profesores.unshift(newProfesor);
@@ -64,7 +68,6 @@ class ProfesoresModel {
     const index = this.profesores.findIndex(
       profesor => String(profesor.id) === String(id)
     );
-
     if (index === -1) return null;
 
     this.profesores[index] = {
@@ -72,16 +75,27 @@ class ProfesoresModel {
       nombre: data.nombre.trim(),
       cedula: data.cedula.trim()
     };
-
     return this.profesores[index];
   }
 
-  darDeBaja(id) {
+  setEstado(id, estado) {
     const profesor = this.findById(id);
     if (!profesor) return null;
-
-    profesor.estado = 'Inactivo';
+    profesor.estado = estado;
     return profesor;
+  }
+
+  darDeBaja(id) {
+    return this.setEstado(id, 'Inactivo');
+  }
+
+  delete(id) {
+    const index = this.profesores.findIndex(
+      profesor => String(profesor.id) === String(id)
+    );
+    if (index === -1) return false;
+    this.profesores.splice(index, 1);
+    return true;
   }
 }
 
