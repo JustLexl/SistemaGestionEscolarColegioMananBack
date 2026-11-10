@@ -1,3 +1,4 @@
+
 const alumnosService = require('./alumnos.service');
 const alumnosModel = require('../models/alumnos.model');
 const gradosService = require('./grados.service');
@@ -208,9 +209,16 @@ function validarGrupos(registros) {
   const claves = new Set();
 
   const campos = [
-    'gradoId', 'nombre', 'grupoLetra', 'clave',
-    'aula', 'edificio', 'turno', 'profesorId',
-    'alumnosMax', 'estado'
+    'gradoId',
+    'nombre',
+    'grupoLetra',
+    'clave',
+    'aula',
+    'edificio',
+    'turno',
+    'profesorId',
+    'alumnosMax',
+    'estado'
   ];
 
   if (!Array.isArray(registros) || registros.length === 0) {
@@ -259,22 +267,30 @@ function validarGrupos(registros) {
       motivos.push('El grado no existe en el sistema.');
     }
 
-    if (datos.turno &&
-        !['matutino', 'vespertino'].includes(datos.turno.toLowerCase())) {
+    if (
+      datos.turno &&
+      !['matutino', 'vespertino'].includes(datos.turno.toLowerCase())
+    ) {
       motivos.push('El turno debe ser matutino o vespertino.');
     }
 
-    if (datos.estado &&
-        !['Activo', 'Inactivo'].includes(datos.estado)) {
+    if (
+      datos.estado &&
+      !['Activo', 'Inactivo'].includes(datos.estado)
+    ) {
       motivos.push('El estado debe ser Activo o Inactivo.');
     }
 
     // Valida los campos numéricos antes de convertirlos
     for (const campo of ['profesorId', 'alumnosMax']) {
-      if (datos[campo] &&
-          (!Number.isInteger(Number(datos[campo])) ||
-           Number(datos[campo]) <= 0)) {
-        motivos.push(`El campo ${campo} debe ser un número entero positivo.`);
+      if (
+        datos[campo] &&
+        (!Number.isInteger(Number(datos[campo])) ||
+         Number(datos[campo]) <= 0)
+      ) {
+        motivos.push(
+          `El campo ${campo} debe ser un número entero positivo.`
+        );
       }
     }
 
@@ -332,8 +348,8 @@ function validarGrupos(registros) {
   };
 }
 
- // VALIDACIÓN DE MATERIAS
- // ==================================================
+// VALIDACIÓN DE MATERIAS
+// ==================================================
 
 function validarMaterias(registros) {
   const validos = [];
@@ -439,13 +455,15 @@ function validarMaterias(registros) {
     }
 
     // Convierte los grupos separados por punto y coma
-// Acepta grupos desde Excel o desde la confirmación JSON
-      const grupos = Array.isArray(registro.gruposAsignados)
-        ? registro.gruposAsignados.map(g => String(g).trim()).filter(Boolean)
-        : String(registro.gruposAsignados ?? '')
-            .split(';')
-            .map(g => g.trim())
-            .filter(Boolean);
+    // Acepta grupos desde Excel o desde la confirmación JSON
+    const grupos = Array.isArray(registro.gruposAsignados)
+      ? registro.gruposAsignados
+          .map(g => String(g).trim())
+          .filter(Boolean)
+      : String(registro.gruposAsignados ?? '')
+          .split(';')
+          .map(g => g.trim())
+          .filter(Boolean);
 
     // Verifica que los grupos pertenezcan al grado indicado
     for (const grupo of grupos) {
@@ -468,7 +486,13 @@ function validarMaterias(registros) {
     const booleano = datos.isTroncoComun.toLowerCase();
 
     const valoresBooleanos = [
-      'true', 'false', '1', '0', 'si', 'sí', 'no'
+      'true',
+      'false',
+      '1',
+      '0',
+      'si',
+      'sí',
+      'no'
     ];
 
     if (booleano && !valoresBooleanos.includes(booleano)) {
@@ -483,31 +507,19 @@ function validarMaterias(registros) {
       });
     } else {
       // Prepara los tipos de datos para el modelo existente
-      if (grupos.length > 0) {
-        datos.gruposAsignados = grupos;
-      } else {
-        delete datos.gruposAsignados;
-      }
 
-      if (datos.profesorId) {
-        datos.profesorId = Number(datos.profesorId);
-      } else {
-        delete datos.profesorId;
-      }
+      // Conserva gruposAsignados, aunque no tenga grupos
+      datos.gruposAsignados = grupos;
 
-      if (booleano) {
-        datos.isTroncoComun = ['true', '1', 'si', 'sí']
-          .includes(booleano);
-      } else {
-        delete datos.isTroncoComun;
-      }
+      // Conserva profesorId, aunque esté vacío
+      datos.profesorId = datos.profesorId
+        ? Number(datos.profesorId)
+        : '';
 
-      // Omite campos opcionales vacíos
-      for (const campo of campos) {
-        if (datos[campo] === '') {
-          delete datos[campo];
-        }
-      }
+      // Convierte isTroncoComun a booleano cuando tiene valor
+      datos.isTroncoComun = booleano
+        ? ['true', '1', 'si', 'sí'].includes(booleano)
+        : '';
 
       validos.push(datos);
     }
@@ -523,9 +535,9 @@ function validarMaterias(registros) {
 }
 
 
- // ==================================================
- // VALIDACIÓN DE PROFESORES
- // ==================================================
+// ==================================================
+// VALIDACIÓN DE PROFESORES
+// ==================================================
 
 function validarProfesores(registros) {
   const validos = [];

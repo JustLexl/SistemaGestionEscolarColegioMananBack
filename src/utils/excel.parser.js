@@ -1,16 +1,36 @@
+
 const XLSX = require('xlsx');
 
-// Convierte las fechas al formato AAAA-MM-DD
+
 function convertirFecha(valor) {
+
+  if (typeof valor === 'number') {
+    const fecha = XLSX.SSF.parse_date_code(valor);
+
+    if (fecha) {
+      const anio = fecha.y;
+      const mes = String(fecha.m).padStart(2, '0');
+      const dia = String(fecha.d).padStart(2, '0');
+
+      return `${anio}-${mes}-${dia}`;
+    }
+  }
+
+  // Fechas que llegan como objetos Date
   if (valor instanceof Date && !Number.isNaN(valor.getTime())) {
-    const anio = valor.getFullYear();
-    const mes = String(valor.getMonth() + 1).padStart(2, '0');
-    const dia = String(valor.getDate()).padStart(2, '0');
+    const anio = valor.getUTCFullYear();
+    const mes = String(valor.getUTCMonth() + 1).padStart(2, '0');
+    const dia = String(valor.getUTCDate()).padStart(2, '0');
 
     return `${anio}-${mes}-${dia}`;
   }
 
   const texto = String(valor ?? '').trim();
+
+  // Conserva fechas que ya están en formato AAAA-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) {
+    return texto;
+  }
 
   // Convierte fechas DD/MM/AAAA
   const partes = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
@@ -18,20 +38,25 @@ function convertirFecha(valor) {
   if (partes) {
     const dia = partes[1].padStart(2, '0');
     const mes = partes[2].padStart(2, '0');
+    const anio = partes[3];
 
-    return `${partes[3]}-${mes}-${dia}`;
+    return `${anio}-${mes}-${dia}`;
   }
 
+ 
   return texto;
 }
 
-// Lee archivos Excel y CSV
+
 function leerExcel(buffer) {
+
   const libro = XLSX.read(buffer, {
     type: 'buffer',
-    cellDates: true
+    cellDates: false,
+    raw: true
   });
 
+  // Obtiene la primera hoja del archivo
   const nombreHoja = libro.SheetNames[0];
 
   if (!nombreHoja) {
@@ -45,7 +70,7 @@ function leerExcel(buffer) {
     raw: true
   });
 
-  // Limpia espacios de encabezados y normaliza las fechas
+  // Limpia los encabezados y normaliza las fechas
   return registros.map(registro => {
     const datos = {};
 
@@ -61,4 +86,5 @@ function leerExcel(buffer) {
   });
 }
 
+// Exporta la función utilizada por el controlador
 module.exports = { leerExcel };
