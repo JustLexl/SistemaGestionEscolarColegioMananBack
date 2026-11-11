@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const XLSX = require('xlsx');
 
 const BASE_URL = process.env.DEMO2_API_URL || 'http://127.0.0.1:3001/api';
 
@@ -24,10 +25,21 @@ async function request(path, options = {}, expectedStatus = 200) {
   return body;
 }
 
-async function validarCsv(csv, nombre = 'profesores.csv') {
+async function validarArchivo(entidad, contenido, nombre, expectedStatus = 200) {
   const form = new FormData();
-  form.append('archivo', new Blob([csv], { type: 'text/csv' }), nombre);
-  return request('/importacion/profesores/validar', { method: 'POST', body: form });
+  form.append('archivo', new Blob([contenido]), nombre);
+  return request(`/importacion/${entidad}/validar`, { method: 'POST', body: form }, expectedStatus);
+}
+
+async function validarCsv(csv, nombre = 'profesores.csv') {
+  return validarArchivo('profesores', csv, nombre);
+}
+
+function crearXlsx(filas) {
+  const libro = XLSX.utils.book_new();
+  const hoja = XLSX.utils.aoa_to_sheet(filas);
+  XLSX.utils.book_append_sheet(libro, hoja, 'Datos');
+  return XLSX.write(libro, { type: 'buffer', bookType: 'xlsx' });
 }
 
 async function main() {
@@ -133,6 +145,45 @@ async function main() {
   const profesorImportado = importacion.profesores[0];
   assert.equal(profesorImportado.profesor.usuarioId, profesorImportado.usuario.id);
 
+  const xlsxProfesor = crearXlsx([
+    ['nombre', 'puesto', 'correo', 'cedula', 'estado'],
+    [
+      'Profesor XLSX Validación',
+      'Profesores',
+      'profesor.xlsx.validacion@manantial.edu.mx',
+      'DOC-XLSX-VALID-001',
+      'Activo',
+    ],
+  ]);
+  const validacionXlsx = await validarArchivo(
+    'profesores',
+    xlsxProfesor,
+    'profesor-valido.xlsx',
+  );
+  assert.equal(validacionXlsx.totalValidos, 1);
+  assert.equal(validacionXlsx.totalErrores, 0);
+
+  const xlsxFecha = crearXlsx([
+    ['matricula', 'nombre', 'fechaNacimiento', 'grado', 'grupo', 'tutor'],
+    ['CM-FECHA-DEMO-001', 'Alumno Fecha Demo', 45292, '4° Primaria', 'Grupo A', 'Tutor Demo'],
+  ]);
+  const validacionFecha = await validarArchivo(
+    'alumnos',
+    xlsxFecha,
+    'alumno-fecha.xlsx',
+  );
+  assert.equal(validacionFecha.totalValidos, 1);
+  assert.equal(validacionFecha.validos[0].fechaNacimiento, '2024-01-01');
+
+  const archivoExcedido = await validarArchivo(
+    'profesores',
+    new Uint8Array((10 * 1024 * 1024) + 1),
+    'profesores-mayor-10mb.csv',
+    413,
+  );
+  assert.equal(archivoExcedido.success, false);
+  assert.match(archivoExcedido.mensaje, /10 MB/);
+
   const invalidas = {
     sinCedula: await validarCsv([
       'nombre,puesto,correo,cedula,estado',
@@ -229,6 +280,9 @@ async function main() {
       profesorId: profesorImportado.profesor.id,
       profesorUsuarioId: profesorImportado.profesor.usuarioId,
     },
+    xlsxValido: `${validacionXlsx.totalValidos} registro válido`,
+    fechaExcel: validacionFecha.validos[0].fechaNacimiento,
+    limiteArchivo: archivoExcedido.mensaje,
     importacionesInvalidas: Object.fromEntries(
       Object.entries(invalidas).map(([clave, valor]) => [clave, valor.totalErrores]),
     ),
