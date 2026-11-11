@@ -45,22 +45,109 @@ function crearXlsx(filas) {
 async function main() {
   const profesoresAntes = await request('/profesores');
   assert.equal(
-    profesoresAntes.data.some(profesor => profesor.nombre === 'Profesor Relacionado Demo'),
+    profesoresAntes.data.some(profesor => profesor.nombre === 'Profesor Relación Demo'),
     false,
   );
 
   const altaProfesor = await request('/roles', {
     method: 'POST',
     body: JSON.stringify({
-      nombre: 'Profesor Relacionado Demo',
-      correo: 'profesor.relacionado.demo@manantial.edu.mx',
+      nombre: 'Profesor Relación Demo',
+      correo: 'profesor.relacion.grupos.demo@manantial.edu.mx',
       puesto: 'Profesores',
-      cedula: 'DOC-DEMO-REL-001',
+      cedula: 'DOC-DEMO-GRUPOS-001',
       estado: 'Activo',
     }),
   }, 201);
   assert.equal(altaProfesor.profesor.usuarioId, altaProfesor.data.id);
   assert.notEqual(altaProfesor.profesor.id, altaProfesor.data.id);
+
+  const gradoCreado = await request('/grados', {
+    method: 'POST',
+    body: JSON.stringify({
+      nombre: '1° Secundaria Demo',
+      nivel: 'Secundaria',
+      ciclo: '2026–2027',
+    }),
+  }, 201);
+  const gradoEditado = await request(`/grados/${gradoCreado.data.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ nombre: 'Primero de Secundaria Demo' }),
+  });
+  assert.equal(gradoEditado.data.nombre, 'Primero de Secundaria Demo');
+
+  const grupoCreado = await request('/grupos', {
+    method: 'POST',
+    body: JSON.stringify({
+      gradoId: gradoCreado.data.id,
+      grupoLetra: 'Z',
+      clave: 'CM-SEC-DEMO-Z-26',
+      aula: 'Aula Demo 21',
+      edificio: 'Edificio Demo',
+      turno: 'matutino',
+      profesorId: altaProfesor.profesor.id,
+      alumnosMax: 35,
+      estado: 'Activo',
+    }),
+  }, 201);
+  assert.equal(grupoCreado.data.profesorId, altaProfesor.profesor.id);
+  const etiquetaGrupo = `${gradoEditado.data.nombre} Z`;
+
+  const profesorConGrupo = await request(`/profesores/${altaProfesor.profesor.id}`);
+  assert.ok(profesorConGrupo.data.grupos.includes(etiquetaGrupo));
+  assert.deepEqual(profesorConGrupo.data.materias, []);
+
+  const profesorDestinoId = 3;
+  const grupoReasignado = await request(`/grupos/${grupoCreado.data.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ profesorId: profesorDestinoId }),
+  });
+  assert.equal(grupoReasignado.data.profesorId, profesorDestinoId);
+
+  const profesorAnterior = await request(`/profesores/${altaProfesor.profesor.id}`);
+  const profesorDestino = await request(`/profesores/${profesorDestinoId}`);
+  assert.equal(profesorAnterior.data.grupos.includes(etiquetaGrupo), false);
+  assert.equal(profesorDestino.data.grupos.includes(etiquetaGrupo), true);
+  assert.ok(profesorDestino.data.materias.includes('Matemáticas III'));
+
+  const profesorInactivo = await request(`/grupos/${grupoCreado.data.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ profesorId: 6 }),
+  }, 409);
+  assert.match(profesorInactivo.error, /inactivo/i);
+
+  const gradoInexistente = await request('/grupos', {
+    method: 'POST',
+    body: JSON.stringify({ gradoId: '999', grupoLetra: 'Z', profesorId: 3 }),
+  }, 404);
+  assert.match(gradoInexistente.error, /grado/i);
+
+  const grupoDuplicado = await request('/grupos', {
+    method: 'POST',
+    body: JSON.stringify({
+      gradoId: gradoCreado.data.id,
+      grupoLetra: 'Z',
+      clave: 'CM-SEC-DEMO-OTRA-26',
+      profesorId: 3,
+    }),
+  }, 409);
+  assert.match(grupoDuplicado.error, /grado y letra/i);
+
+  const claveDuplicada = await request('/grupos', {
+    method: 'POST',
+    body: JSON.stringify({
+      gradoId: '6',
+      grupoLetra: 'Y',
+      clave: 'CM-SEC-DEMO-Z-26',
+      profesorId: 3,
+    }),
+  }, 409);
+  assert.match(claveDuplicada.error, /clave/i);
+
+  const grupoInactivo = await request(`/grupos/${grupoCreado.data.id}/toggle-estado`, {
+    method: 'PATCH',
+  });
+  assert.equal(grupoInactivo.data.estado, 'Inactivo');
 
   const altaDirectivo = await request('/roles', {
     method: 'POST',
@@ -263,6 +350,21 @@ async function main() {
       usuarioId: altaProfesor.data.id,
       profesorId: altaProfesor.profesor.id,
       profesorUsuarioId: altaProfesor.profesor.usuarioId,
+    },
+    relacionesAcademicas: {
+      gradoId: gradoCreado.data.id,
+      gradoEditado: gradoEditado.data.nombre,
+      grupoId: grupoCreado.data.id,
+      grupoProfesorIdInicial: grupoCreado.data.profesorId,
+      profesorAnteriorSinGrupo: !profesorAnterior.data.grupos.includes(etiquetaGrupo),
+      profesorDestinoId,
+      profesorDestinoConGrupo: profesorDestino.data.grupos.includes(etiquetaGrupo),
+      materiasProfesorDestino: profesorDestino.data.materias,
+      estadoGrupoFinal: grupoInactivo.data.estado,
+      profesorInactivo: profesorInactivo.error,
+      gradoInexistente: gradoInexistente.error,
+      grupoDuplicado: grupoDuplicado.error,
+      claveDuplicada: claveDuplicada.error,
     },
     altaDirectivo: { usuarioId: altaDirectivo.data.id, profesor: altaDirectivo.profesor },
     altaAdministrativo: {
