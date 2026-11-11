@@ -43,7 +43,6 @@ function convertirFecha(valor) {
     return `${anio}-${mes}-${dia}`;
   }
 
- 
   return texto;
 }
 
