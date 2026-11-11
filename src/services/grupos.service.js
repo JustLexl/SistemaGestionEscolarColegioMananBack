@@ -1,8 +1,41 @@
 const gruposModel = require('../models/grupos.model');
 const gradosModel = require('../models/grados.model');
+const profesoresModel = require('../models/profesores.model');
 
 const TURNOS_PERMITIDOS = ['matutino', 'vespertino'];
 const ESTADOS_PERMITIDOS = ['Activo', 'Inactivo'];
+
+function crearError(message, statusCode) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
+
+function obtenerIniciales(nombre) {
+  const partes = String(nombre || '')
+    .replace(/\bProf(?:ra)?\.?\b/gi, '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  return partes.slice(0, 2).map(parte => parte[0].toUpperCase()).join('') || 'SA';
+}
+
+function resolverLetra(data, existing) {
+  const nombre = String(data.nombre || '');
+  const coincidencia = nombre.match(/Grupo\s+([A-Z0-9]+)/i);
+  return String(
+    data.grupoLetra ?? coincidencia?.[1] ?? existing?.grupoLetra ?? ''
+  ).trim().toUpperCase();
+}
+
+function normalizarProfesorId(valor) {
+  if (valor === null || valor === '' || Number(valor) === 0) return null;
+  const id = Number(valor);
+  if (!Number.isInteger(id) || id <= 0) {
+    throw crearError('profesorId debe ser un identificador válido o null.', 400);
+  }
+  return id;
+}
 
 class GruposService {
   getAllGrupos(filters) {
@@ -12,88 +45,123 @@ class GruposService {
   getGrupoById(id) {
     const grupo = gruposModel.findById(id);
     if (!grupo) {
-      const error = new Error(`El grupo con ID ${id} no fue encontrado.`);
-      error.statusCode = 404;
-      throw error;
+      throw crearError(`El grupo con ID ${id} no fue encontrado.`, 404);
     }
     return grupo;
   }
 
+  prepararGrupo(data = {}, existing = null) {
+    const gradoId = String(data.gradoId ?? existing?.gradoId ?? '').trim();
+    if (!gradoId) {
+      throw crearError('El gradoId es obligatorio.', 400);
+    }
+
+    const grado = gradosModel.findById(gradoId);
+    if (!grado) {
+      throw crearError(`El grado con ID ${gradoId} no fue encontrado.`, 404);
+    }
+
+    const grupoLetra = resolverLetra(data, existing);
+    if (!grupoLetra || !/^[A-Z0-9]{1,5}$/.test(grupoLetra)) {
+      throw crearError('El grupo debe tener una letra o clave corta válida.', 400);
+    }
+
+    const turno = String(data.turno ?? existing?.turno ?? 'matutino').toLowerCase();
+    if (!TURNOS_PERMITIDOS.includes(turno)) {
+      throw crearError(`El turno debe ser: ${TURNOS_PERMITIDOS.join(' o ')}.`, 400);
+    }
+
+    const estadoEntrada = String(data.estado ?? existing?.estado ?? 'Activo');
+    const estado = ESTADOS_PERMITIDOS.find(
+      permitido => permitido.toLowerCase() === estadoEntrada.toLowerCase()
+    );
+    if (!estado) {
+      throw crearError(`El estado debe ser: ${ESTADOS_PERMITIDOS.join(' o ')}.`, 400);
+    }
+
+    const profesorEntrada = Object.prototype.hasOwnProperty.call(data, 'profesorId')
+      ? data.profesorId
+      : existing?.profesorId ?? null;
+    const profesorId = normalizarProfesorId(profesorEntrada);
+    let profesor = null;
+
+    if (profesorId !== null) {
+      profesor = profesoresModel.findById(profesorId);
+      if (!profesor) {
+        throw crearError(`El profesor con ID ${profesorId} no fue encontrado.`, 404);
+      }
+      if (profesor.estado !== 'Activo') {
+        throw crearError('El profesor seleccionado está inactivo y no puede asignarse.', 409);
+      }
+    }
+
+    const alumnosMax = Number(data.alumnosMax ?? existing?.alumnosMax ?? 40);
+    const alumnosActuales = Number(data.alumnosActuales ?? existing?.alumnosActuales ?? 0);
+    if (!Number.isInteger(alumnosMax) || alumnosMax <= 0) {
+      throw crearError('La capacidad máxima debe ser un entero mayor que cero.', 400);
+    }
+    if (!Number.isInteger(alumnosActuales) || alumnosActuales < 0 || alumnosActuales > alumnosMax) {
+      throw crearError('La matrícula actual debe estar entre 0 y la capacidad máxima.', 400);
+    }
+
+    const sufijoCiclo = String(grado.ciclo).match(/(\d{2})\D*$/)?.[1] || '24';
+    const clave = String(
+      data.clave ?? existing?.clave ?? `CM-PRI-${gradoId}${grupoLetra}-${sufijoCiclo}`
+    ).trim().toUpperCase();
+    if (!clave) {
+      throw crearError('La clave del grupo es obligatoria.', 400);
+    }
+
+    return {
+      gradoId,
+      gradoNombre: grado.nombre,
+      grupoLetra,
+      nombre: `${grado.nombre} - Grupo ${grupoLetra}`,
+      clave,
+      aula: String(data.aula ?? existing?.aula ?? 'Aula por asignar').trim(),
+      edificio: String(data.edificio ?? existing?.edificio ?? 'Edificio Principal').trim(),
+      turno,
+      profesorId,
+      profesorNombre: profesor?.nombre ?? 'Profesor Sin Asignar',
+      profesorIniciales: profesor ? obtenerIniciales(profesor.nombre) : 'SA',
+      cedula: profesor?.cedula ?? 'Sin asignar',
+      materias: existing?.materias ?? [],
+      alumnosActuales,
+      alumnosMax,
+      estado,
+      isBase: data.isBase ?? existing?.isBase ?? false
+    };
+  }
+
+  validarDuplicados(data, excludeId = null) {
+    if (gruposModel.findByGradoAndLetra(data.gradoId, data.grupoLetra, excludeId)) {
+      throw crearError('Ya existe un grupo con el mismo grado y letra.', 409);
+    }
+    if (gruposModel.findByClave(data.clave, excludeId)) {
+      throw crearError('La clave del grupo ya está registrada.', 409);
+    }
+  }
+
   createGrupo(data) {
-    if (!data.gradoId) {
-      const error = new Error('El gradoId es obligatorio.');
-      error.statusCode = 400;
-      throw error;
-    }
-
-    if (data.turno && !TURNOS_PERMITIDOS.includes(data.turno.toLowerCase())) {
-      const error = new Error(`El turno debe ser: ${TURNOS_PERMITIDOS.join(' o ')}.`);
-      error.statusCode = 400;
-      throw error;
-    }
-
-    if (data.estado && !ESTADOS_PERMITIDOS.includes(data.estado)) {
-      const error = new Error(`El estado debe ser: ${ESTADOS_PERMITIDOS.join(' o ')}.`);
-      error.statusCode = 400;
-      throw error;
-    }
-
-    // Resolver gradoNombre si no viene explícito
-    if (!data.gradoNombre) {
-      const grado = gradosModel.findById(data.gradoId);
-      data.gradoNombre = grado ? grado.nombre : `${data.gradoId}° Grado`;
-    }
-
-    return gruposModel.create(data);
+    const preparado = this.prepararGrupo(data);
+    this.validarDuplicados(preparado);
+    return gruposModel.create(preparado);
   }
 
   updateGrupo(id, data) {
-    const existing = gruposModel.findById(id);
-    if (!existing) {
-      const error = new Error(`El grupo con ID ${id} no fue encontrado.`);
-      error.statusCode = 404;
-      throw error;
-    }
-
-    if (data.turno && !TURNOS_PERMITIDOS.includes(data.turno.toLowerCase())) {
-      const error = new Error(`El turno debe ser: ${TURNOS_PERMITIDOS.join(' o ')}.`);
-      error.statusCode = 400;
-      throw error;
-    }
-
-    if (data.estado && !ESTADOS_PERMITIDOS.includes(data.estado)) {
-      const error = new Error(`El estado debe ser: ${ESTADOS_PERMITIDOS.join(' o ')}.`);
-      error.statusCode = 400;
-      throw error;
-    }
-
-    if (data.gradoId && !data.gradoNombre) {
-      const grado = gradosModel.findById(data.gradoId);
-      if (grado) data.gradoNombre = grado.nombre;
-    }
-
-    return gruposModel.update(id, data);
+    const existing = this.getGrupoById(id);
+    const preparado = this.prepararGrupo(data, existing);
+    this.validarDuplicados(preparado, existing.id);
+    return gruposModel.update(id, preparado);
   }
 
   deleteGrupo(id) {
-    const existing = gruposModel.findById(id);
-    if (!existing) {
-      const error = new Error(`El grupo con ID ${id} no fue encontrado.`);
-      error.statusCode = 404;
-      throw error;
-    }
-
+    this.getGrupoById(id);
     return gruposModel.delete(id);
   }
 
   toggleGrupoEstado(id) {
-    const existing = gruposModel.findById(id);
-    if (!existing) {
-      const error = new Error(`El grupo con ID ${id} no fue encontrado.`);
-      error.statusCode = 404;
-      throw error;
-    }
-
+    this.getGrupoById(id);
     return gruposModel.toggleEstado(id);
   }
 

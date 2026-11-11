@@ -93,6 +93,7 @@ CREATE TABLE grupos (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (grado_id) REFERENCES grados(id) ON UPDATE CASCADE ON DELETE RESTRICT,
     FOREIGN KEY (profesor_id) REFERENCES profesores(id) ON UPDATE CASCADE ON DELETE SET NULL,
+    UNIQUE KEY uq_grupos_grado_letra (grado_id, grupo_letra),
     INDEX idx_grupos_grado (grado_id),
     INDEX idx_grupos_turno (turno),
     INDEX idx_grupos_estado (estado)

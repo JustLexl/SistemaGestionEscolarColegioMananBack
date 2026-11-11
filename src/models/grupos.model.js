@@ -16,7 +16,7 @@ class GruposModel {
         grupo.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
         grupo.clave.toLowerCase().includes(searchTerm.toLowerCase()) ||
         grupo.aula.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        grupo.profesorNombre.toLowerCase().includes(searchTerm.toLowerCase());
+        String(grupo.profesorNombre || '').toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchGrado = !gradoId || String(grupo.gradoId) === String(gradoId);
       const matchTurno = !turno || grupo.turno.toLowerCase() === turno.toLowerCase();
@@ -29,6 +29,30 @@ class GruposModel {
   findById(id) {
     const numericId = Number(id);
     return this.grupos.find(g => g.id === numericId) || null;
+  }
+
+  findByProfesorId(profesorId) {
+    return this.grupos.filter(
+      grupo => grupo.profesorId !== null &&
+        String(grupo.profesorId) === String(profesorId)
+    );
+  }
+
+  findByGradoAndLetra(gradoId, grupoLetra, excludeId = null) {
+    const letra = String(grupoLetra || '').trim().toUpperCase();
+    return this.grupos.find(grupo =>
+      String(grupo.gradoId) === String(gradoId) &&
+      String(grupo.grupoLetra).trim().toUpperCase() === letra &&
+      (excludeId === null || String(grupo.id) !== String(excludeId))
+    ) || null;
+  }
+
+  findByClave(clave, excludeId = null) {
+    const normalizada = String(clave || '').trim().toLowerCase();
+    return this.grupos.find(grupo =>
+      grupo.clave.trim().toLowerCase() === normalizada &&
+      (excludeId === null || String(grupo.id) !== String(excludeId))
+    ) || null;
   }
 
   create(data) {
@@ -50,11 +74,11 @@ class GruposModel {
       aula: data.aula || 'Aula 100',
       edificio: data.edificio || 'Edificio Principal',
       turno: data.turno || 'matutino',
-      profesorId: Number(data.profesorId) || 0,
+      profesorId: data.profesorId === null ? null : Number(data.profesorId),
       profesorNombre: data.profesorNombre || 'Profesor Sin Asignar',
       profesorIniciales: data.profesorIniciales || 'SA',
       cedula: data.cedula || 'DOC-2024-000',
-      materias: Array.isArray(data.materias) ? data.materias : ['Español', 'Matemáticas'],
+      materias: Array.isArray(data.materias) ? data.materias : [],
       alumnosActuales: Number(data.alumnosActuales) || 0,
       alumnosMax: Number(data.alumnosMax) || 40,
       estado: data.estado || 'Activo',
@@ -80,7 +104,9 @@ class GruposModel {
       ...(data.aula !== undefined && { aula: data.aula }),
       ...(data.edificio !== undefined && { edificio: data.edificio }),
       ...(data.turno !== undefined && { turno: data.turno }),
-      ...(data.profesorId !== undefined && { profesorId: Number(data.profesorId) }),
+      ...(data.profesorId !== undefined && {
+        profesorId: data.profesorId === null ? null : Number(data.profesorId)
+      }),
       ...(data.profesorNombre !== undefined && { profesorNombre: data.profesorNombre }),
       ...(data.profesorIniciales !== undefined && { profesorIniciales: data.profesorIniciales }),
       ...(data.cedula !== undefined && { cedula: data.cedula }),

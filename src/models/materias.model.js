@@ -31,6 +31,13 @@ class MateriasModel {
     return this.materias.find(m => m.id === numericId) || null;
   }
 
+  findByProfesorId(profesorId) {
+    return this.materias.filter(
+      materia => materia.profesorId !== null &&
+        String(materia.profesorId) === String(profesorId)
+    );
+  }
+
   create(data) {
     const maxId = this.materias.reduce((acc, m) => (m.id > acc ? m.id : acc), 0);
     const id = maxId + 1;

@@ -24,7 +24,10 @@ class GradosModel {
   }
 
   create(data) {
-    const nextId = (this.grados.length + 1).toString();
+    const nextId = (this.grados.reduce(
+      (max, grado) => Math.max(max, Number(grado.id) || 0),
+      0
+    ) + 1).toString();
     const newGrado = {
       id: data.id ? String(data.id) : nextId,
       nombre: data.nombre.trim(),

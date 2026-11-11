@@ -2,12 +2,13 @@ const initialProfesores = require('../data/profesores.seed');
 
 class ProfesoresModel {
   constructor() {
-    this.profesores = initialProfesores.map(profesor => ({
-      ...profesor,
-      usuarioId: profesor.usuarioId ?? null,
-      materias: [...profesor.materias],
-      grupos: [...profesor.grupos]
-    }));
+    this.profesores = initialProfesores.map(profesor => {
+      const { materias, grupos, ...datosBase } = profesor;
+      return {
+        ...datosBase,
+        usuarioId: profesor.usuarioId ?? null
+      };
+    });
   }
 
   findAll(filters = {}) {
@@ -55,8 +56,6 @@ class ProfesoresModel {
       usuarioId: Number(data.usuarioId),
       nombre: data.nombre.trim(),
       cedula: data.cedula.trim(),
-      materias: [],
-      grupos: [],
       estado: data.estado || 'Activo'
     };
 

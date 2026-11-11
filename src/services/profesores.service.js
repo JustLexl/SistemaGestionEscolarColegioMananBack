@@ -1,9 +1,13 @@
 const profesoresModel = require('../models/profesores.model');
 const rolesModel = require('../models/roles.model');
+const gruposModel = require('../models/grupos.model');
+const materiasModel = require('../models/materias.model');
 
 class ProfesoresService {
   getAllProfesores(filters) {
-    return profesoresModel.findAll(filters);
+    return profesoresModel.findAll(filters).map(
+      profesor => this.enriquecerProfesor(profesor)
+    );
   }
 
   getProfesorById(id) {
@@ -13,11 +17,30 @@ class ProfesoresService {
       error.statusCode = 404;
       throw error;
     }
-    return profesor;
+    return this.enriquecerProfesor(profesor);
   }
 
   getProfesorByUsuarioId(usuarioId) {
-    return profesoresModel.findByUsuarioId(usuarioId);
+    const profesor = profesoresModel.findByUsuarioId(usuarioId);
+    return profesor ? this.enriquecerProfesor(profesor) : null;
+  }
+
+  enriquecerProfesor(profesor) {
+    const grupos = gruposModel.findByProfesorId(profesor.id).map(grupo => {
+      const gradoCorto = String(grupo.gradoNombre || '')
+        .replace(/\s+(Primaria|Grado)$/i, '')
+        .trim();
+      return `${gradoCorto} ${grupo.grupoLetra}`.trim();
+    });
+    const materias = materiasModel.findByProfesorId(profesor.id).map(
+      materia => materia.nombre
+    );
+
+    return {
+      ...profesor,
+      grupos,
+      materias
+    };
   }
 
   validarProfesor(data = {}) {
@@ -72,12 +95,12 @@ class ProfesoresService {
 
   createProfesor(data = {}) {
     this.validarAltaRelacionada(data, true);
-    return profesoresModel.create({
+    return this.enriquecerProfesor(profesoresModel.create({
       usuarioId: data.usuarioId,
       nombre: data.nombre,
       cedula: data.cedula,
       estado: data.estado || 'Activo'
-    });
+    }));
   }
 
   updateProfesor(id, data = {}) {
@@ -88,12 +111,12 @@ class ProfesoresService {
     };
     this.validarProfesor(updatedData);
     this.validarCedulaDisponible(updatedData.cedula, existing.id);
-    return profesoresModel.update(id, updatedData);
+    return this.enriquecerProfesor(profesoresModel.update(id, updatedData));
   }
 
   darDeBajaProfesor(id) {
     this.getProfesorById(id);
-    return profesoresModel.darDeBaja(id);
+    return this.enriquecerProfesor(profesoresModel.darDeBaja(id));
   }
 
   sincronizarDesdeUsuario(usuario, cedula) {
@@ -106,16 +129,17 @@ class ProfesoresService {
     this.validarProfesor(updatedData);
     this.validarCedulaDisponible(updatedData.cedula, profesor.id);
     profesoresModel.update(profesor.id, updatedData);
-    return profesoresModel.setEstado(
+    return this.enriquecerProfesor(profesoresModel.setEstado(
       profesor.id,
       usuario.puesto === 'Profesores' && usuario.estado === 'Activo'
         ? 'Activo'
         : 'Inactivo'
-    );
+    ));
   }
 
   setEstadoProfesor(id, estado) {
-    return profesoresModel.setEstado(id, estado);
+    const profesor = profesoresModel.setEstado(id, estado);
+    return profesor ? this.enriquecerProfesor(profesor) : null;
   }
 
   eliminarProfesorInterno(id) {
