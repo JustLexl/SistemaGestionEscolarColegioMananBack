@@ -20,6 +20,45 @@ const CAMPOS_OBLIGATORIOS = [
   'tutor'
 ];
 
+function normalizarAcademico(valor) {
+  return String(valor ?? '')
+    .trim()
+    .toLocaleLowerCase('es-MX')
+    .replace(/\s+/g, ' ');
+}
+
+function resolverGrupoImportado(gradoNombre, grupoNombre, cicloEscolarId) {
+  const gradoBuscado = normalizarAcademico(gradoNombre);
+  const grupoBuscado = normalizarAcademico(grupoNombre);
+
+  const coincidencias = gruposModel.findAll({}).filter(grupo => {
+    const nombresGrupo = [
+      grupo.nombre,
+      grupo.grupoLetra,
+      `Grupo ${grupo.grupoLetra}`
+    ].map(normalizarAcademico);
+
+    return normalizarAcademico(grupo.grado?.nombre) === gradoBuscado &&
+      nombresGrupo.includes(grupoBuscado) &&
+      (!cicloEscolarId ||
+        String(grupo.cicloEscolar?.id) === String(cicloEscolarId));
+  });
+
+  if (coincidencias.length === 0) {
+    throw new Error(
+      'No existe un grupo que coincida inequívocamente con Grado, Grupo y ciclo escolar.'
+    );
+  }
+
+  if (coincidencias.length > 1) {
+    throw new Error(
+      'La combinación Grado y Grupo es ambigua; agregue cicloEscolarId para identificarla.'
+    );
+  }
+
+  return coincidencias[0];
+}
+
 // Valida los alumnos del Excel sin guardarlos
 function validarAlumnos(registros) {
   const validos = [];
@@ -67,9 +106,29 @@ function validarAlumnos(registros) {
 
     const erroresFila = [];
 
+    try {
+      const grupo = resolverGrupoImportado(
+        datos.grado,
+        datos.grupo,
+        registro.cicloEscolarId
+      );
+      datos.grupoId = grupo.id;
+    } catch (error) {
+      erroresFila.push(error.message);
+    }
+
     // Reutiliza las validaciones del backend de alumnos
     try {
-      alumnosService.validarAlumno(datos);
+      const datosAlumno = {
+        matricula: datos.matricula,
+        nombre: datos.nombre,
+        fechaNacimiento: datos.fechaNacimiento,
+        grupoId: datos.grupoId,
+        tutor: datos.tutor,
+        ...(datos.estado && { estado: datos.estado })
+      };
+      alumnosService.validarAlumno(datosAlumno);
+      alumnosService.validarGrupoParaNuevaInscripcion(datosAlumno.grupoId);
     } catch (error) {
       erroresFila.push(error.message);
     }
@@ -94,7 +153,14 @@ function validarAlumnos(registros) {
         motivos: erroresFila
       });
     } else {
-      validos.push(datos);
+      validos.push({
+        matricula: datos.matricula,
+        nombre: datos.nombre,
+        fechaNacimiento: datos.fechaNacimiento,
+        grupoId: datos.grupoId,
+        tutor: datos.tutor,
+        ...(datos.estado && { estado: datos.estado })
+      });
     }
   });
 

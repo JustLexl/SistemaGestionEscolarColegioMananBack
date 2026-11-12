@@ -1,4 +1,26 @@
 const initialAlumnos = require('../data/alumnos.seed');
+const gruposModel = require('./grupos.model');
+
+function normalizar(valor) {
+  return String(valor ?? '').trim().toLocaleLowerCase('es-MX');
+}
+
+function serializar(alumno) {
+  if (!alumno) return null;
+
+  const grupoRelacionado = gruposModel.findById(alumno.grupoId);
+  if (!grupoRelacionado) {
+    return { ...alumno, grupo: null, grado: null, cicloEscolar: null };
+  }
+
+  const { grado, cicloEscolar, ...grupo } = grupoRelacionado;
+  return {
+    ...alumno,
+    grupo,
+    grado: grado || null,
+    cicloEscolar: cicloEscolar || null
+  };
+}
 
 /**
  * Modelo de Datos para la entidad Alumnos.
@@ -10,33 +32,52 @@ class AlumnosModel {
   }
 
   findAll(filters = {}) {
-    const { search, grado, grupo, estado } = filters;
+    const {
+      search,
+      grupoId,
+      gradoId,
+      cicloEscolarId,
+      grado,
+      grupo,
+      estado
+    } = filters;
 
-    return this.alumnos.filter(alumno => {
+    return this.alumnos.map(serializar).filter(alumno => {
       const texto = String(search || '').toLowerCase().trim();
 
       const matchSearch = !texto ||
         alumno.nombre.toLowerCase().includes(texto) ||
         alumno.matricula.toLowerCase().includes(texto);
 
-      const matchGrado = !grado || alumno.grado === grado;
-      const matchGrupo = !grupo || alumno.grupo === grupo;
+      const matchGrupoId = !grupoId || String(alumno.grupoId) === String(grupoId);
+      const matchGradoId = !gradoId || String(alumno.grado?.id) === String(gradoId);
+      const matchCicloId = !cicloEscolarId ||
+        String(alumno.cicloEscolar?.id) === String(cicloEscolarId);
+      const matchGradoLegacy = !grado ||
+        normalizar(alumno.grado?.nombre) === normalizar(grado);
+      const nombresGrupo = [
+        alumno.grupo?.nombre,
+        alumno.grupo?.grupoLetra,
+        alumno.grupo?.grupoLetra ? `Grupo ${alumno.grupo.grupoLetra}` : ''
+      ].map(normalizar);
+      const matchGrupoLegacy = !grupo || nombresGrupo.includes(normalizar(grupo));
       const matchEstado = !estado || alumno.estado === estado;
 
-      return matchSearch && matchGrado && matchGrupo && matchEstado;
+      return matchSearch && matchGrupoId && matchGradoId && matchCicloId &&
+        matchGradoLegacy && matchGrupoLegacy && matchEstado;
     });
   }
 
   findById(id) {
-    return this.alumnos.find(
+    return serializar(this.alumnos.find(
       alumno => String(alumno.id) === String(id)
-    ) || null;
+    ) || null);
   }
 
   findByMatricula(matricula) {
-    return this.alumnos.find(
+    return serializar(this.alumnos.find(
       alumno => alumno.matricula === matricula
-    ) || null;
+    ) || null);
   }
 
   create(data) {
@@ -50,14 +91,13 @@ class AlumnosModel {
       matricula: data.matricula.trim(),
       nombre: data.nombre.trim(),
       fechaNacimiento: data.fechaNacimiento,
-      grado: data.grado.trim(),
-      grupo: data.grupo.trim(),
+      grupoId: Number(data.grupoId),
       tutor: data.tutor.trim(),
       estado: data.estado || 'Activo'
     };
 
     this.alumnos.push(newAlumno);
-    return newAlumno;
+    return serializar(newAlumno);
   }
 
   update(id, data) {
@@ -78,11 +118,8 @@ class AlumnosModel {
       ...(data.fechaNacimiento !== undefined && {
         fechaNacimiento: data.fechaNacimiento
       }),
-      ...(data.grado !== undefined && {
-        grado: data.grado.trim()
-      }),
-      ...(data.grupo !== undefined && {
-        grupo: data.grupo.trim()
+      ...(data.grupoId !== undefined && {
+        grupoId: Number(data.grupoId)
       }),
       ...(data.tutor !== undefined && {
         tutor: data.tutor.trim()
@@ -92,7 +129,7 @@ class AlumnosModel {
       })
     };
 
-    return this.alumnos[index];
+    return serializar(this.alumnos[index]);
   }
 
   delete(id) {

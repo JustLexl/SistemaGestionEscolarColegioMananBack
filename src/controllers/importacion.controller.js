@@ -109,7 +109,7 @@ function procesarConfirmacion(validar, registrar, entidad) {
 const plantillas = {
   alumnos: [
     'matricula', 'nombre', 'fechaNacimiento',
-    'grado', 'grupo', 'tutor'
+    'grado', 'grupo', 'cicloEscolarId', 'tutor'
   ],
 
   profesores: [

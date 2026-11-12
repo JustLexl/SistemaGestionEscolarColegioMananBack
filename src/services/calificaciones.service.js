@@ -109,8 +109,8 @@ class CalificacionesService {
     return {
       alumno: alumno.nombre,
       matricula: alumno.matricula,
-      grado: alumno.grado.replace(/\s+Primaria$/i, '').trim(),
-      grupo: alumno.grupo.replace(/^Grupo\s+/i, '').trim(),
+      grado: alumno.grado.nombre.replace(/\s+(Primaria|Secundaria)$/i, '').trim(),
+      grupo: alumno.grupo.grupoLetra,
       materia: materia.nombre,
       periodo,
       calificacion: data.calificacion

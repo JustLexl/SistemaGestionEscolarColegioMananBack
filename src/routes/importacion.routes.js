@@ -118,6 +118,7 @@ const plantillas = {
     'fechaNacimiento',
     'grado',
     'grupo',
+    'cicloEscolarId',
     'tutor'
   ],
 

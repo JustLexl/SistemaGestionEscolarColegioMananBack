@@ -4,8 +4,7 @@ const alumnos = [
     matricula: 'CM-2026-001',
     nombre: 'Sofía Hernández López',
     fechaNacimiento: '',
-    grado: '4° Primaria',
-    grupo: 'Grupo A',
+    grupoId: 1,
     tutor: 'María López',
     estado: 'Activo'
   },
@@ -14,8 +13,7 @@ const alumnos = [
     matricula: 'CM-2026-002',
     nombre: 'Mateo García Pérez',
     fechaNacimiento: '',
-    grado: '4° Primaria',
-    grupo: 'Grupo B',
+    grupoId: 2,
     tutor: 'Carlos García',
     estado: 'Activo'
   },
@@ -24,8 +22,7 @@ const alumnos = [
     matricula: 'CM-2026-003',
     nombre: 'Valentina Martínez Ruiz',
     fechaNacimiento: '',
-    grado: '3° Primaria',
-    grupo: 'Grupo A',
+    grupoId: 3,
     tutor: 'Laura Ruiz',
     estado: 'Activo'
   },
@@ -34,8 +31,7 @@ const alumnos = [
     matricula: 'CM-2026-004',
     nombre: 'Sebastián Torres Díaz',
     fechaNacimiento: '',
-    grado: '5° Primaria',
-    grupo: 'Grupo A',
+    grupoId: 4,
     tutor: 'Andrea Díaz',
     estado: 'Activo'
   },
@@ -44,8 +40,7 @@ const alumnos = [
     matricula: 'CM-2026-005',
     nombre: 'Camila Sánchez Moreno',
     fechaNacimiento: '',
-    grado: '6° Primaria',
-    grupo: 'Grupo A',
+    grupoId: 5,
     tutor: 'Miguel Sánchez',
     estado: 'Inactivo'
   }

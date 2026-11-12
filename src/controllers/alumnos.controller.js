@@ -5,6 +5,9 @@ class AlumnosController {
     try {
       const filters = {
         search: req.query.search,
+        grupoId: req.query.grupoId,
+        gradoId: req.query.gradoId,
+        cicloEscolarId: req.query.cicloEscolarId,
         grado: req.query.grado,
         grupo: req.query.grupo,
         estado: req.query.estado
