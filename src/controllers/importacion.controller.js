@@ -128,7 +128,7 @@ const plantillas = {
 
   materias: [
     'codigo', 'nombre', 'claveSep', 'cargaHoraria',
-    'gradoId', 'gruposAsignados', 'profesorId',
+    'cicloEscolarId', 'grupoIds', 'gradoId', 'gruposAsignados', 'profesorId',
     'estado', 'isTroncoComun'
   ]
 };

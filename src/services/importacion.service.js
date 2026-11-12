@@ -4,7 +4,7 @@ const alumnosModel = require('../models/alumnos.model');
 const gradosService = require('./grados.service');
 const gruposModel = require('../models/grupos.model');
 const gradosModel = require('../models/grados.model');
-const materiasModel = require('../models/materias.model');
+const materiasService = require('./materias.service');
 const rolesService = require('./roles.service');
 const rolesModel = require('../models/roles.model');
 const profesoresModel = require('../models/profesores.model');
@@ -427,23 +427,50 @@ function validarGrupos(registros) {
 // VALIDACIÓN DE MATERIAS
 // ==================================================
 
+function separarValores(valor) {
+  return (Array.isArray(valor) ? valor : String(valor ?? '').split(';'))
+    .map(item => String(item).trim())
+    .filter(Boolean);
+}
+
+function resolverGruposLegacy(registro) {
+  const cicloEscolarId = String(registro.cicloEscolarId ?? '').trim();
+  const gradoId = String(registro.gradoId ?? '').trim();
+  const etiquetas = separarValores(registro.gruposAsignados);
+  if (!cicloEscolarId) {
+    throw new Error(
+      'cicloEscolarId es obligatorio al importar gruposAsignados legacy para evitar ambigüedad entre ciclos.'
+    );
+  }
+  if (!gradoId || etiquetas.length === 0) {
+    throw new Error('La entrada legacy requiere gradoId y gruposAsignados.');
+  }
+
+  return etiquetas.map(etiqueta => {
+    const buscada = normalizarAcademico(etiqueta);
+    const coincidencias = gruposModel.findAll({ cicloEscolarId }).filter(grupo => {
+      if (String(grupo.gradoId) !== gradoId) return false;
+      const opciones = [
+        grupo.nombre,
+        `${grupo.grado?.numeroGrado}° ${grupo.grupoLetra}`,
+        `${grupo.grado?.nombre} - Grupo ${grupo.grupoLetra}`,
+        `Grupo ${grupo.grupoLetra}`
+      ].map(normalizarAcademico);
+      return opciones.includes(buscada);
+    });
+    if (coincidencias.length !== 1) {
+      throw new Error(
+        `El grupo ${etiqueta} no se pudo resolver inequívocamente en el ciclo y grado indicados.`
+      );
+    }
+    return coincidencias[0].id;
+  });
+}
+
 function validarMaterias(registros) {
   const validos = [];
   const errores = [];
   const claves = new Set();
-
-  const campos = [
-    'codigo',
-    'nombre',
-    'claveSep',
-    'cargaHoraria',
-    'gradoId',
-    'gruposAsignados',
-    'profesorId',
-    'estado',
-    'isTroncoComun'
-  ];
-
   if (!Array.isArray(registros) || registros.length === 0) {
     return {
       totalRegistros: 0,
@@ -454,150 +481,63 @@ function validarMaterias(registros) {
     };
   }
 
-  // Comprueba los encabezados de la plantilla
   const encabezados = Object.keys(registros[0]);
-
-  const faltantes = campos.filter(
-    campo => !encabezados.includes(campo)
-  );
-
-  if (faltantes.length > 0) {
+  const camposRequeridos = ['nombre', 'claveSep', 'cargaHoraria', 'profesorId', 'estado', 'isTroncoComun'];
+  const faltantes = camposRequeridos.filter(campo => !encabezados.includes(campo));
+  const tieneRelacionesNuevas = encabezados.includes('grupoIds');
+  const tieneRelacionesLegacy = encabezados.includes('gradoId') && encabezados.includes('gruposAsignados');
+  if (faltantes.length > 0 || (!tieneRelacionesNuevas && !tieneRelacionesLegacy)) {
+    const requeridos = [
+      ...faltantes,
+      ...(!tieneRelacionesNuevas && !tieneRelacionesLegacy ? ['grupoIds o gradoId+gruposAsignados'] : [])
+    ];
     return {
       totalRegistros: registros.length,
       totalValidos: 0,
       totalErrores: 1,
       validos,
-      errores: [`Faltan columnas: ${faltantes.join(', ')}`]
+      errores: [`Faltan columnas: ${requeridos.join(', ')}`]
     };
   }
 
-  const materiasExistentes = materiasModel.findAll({});
-  const gruposExistentes = gruposModel.findAll({});
-
   registros.forEach((registro, indice) => {
-    const datos = {};
+    const claveSep = String(registro.claveSep ?? '').trim();
     const motivos = [];
+    let grupoIds = [];
+    try {
+      const idsDirectos = separarValores(registro.grupoIds);
+      grupoIds = idsDirectos.length > 0
+        ? idsDirectos.map(id => Number(id))
+        : resolverGruposLegacy(registro);
 
-    for (const campo of campos) {
-      datos[campo] = String(registro[campo] ?? '').trim();
-    }
-
-    // Campos obligatorios para importar materias
-    for (const campo of ['nombre', 'claveSep', 'gradoId']) {
-      if (!datos[campo]) {
-        motivos.push(`El campo ${campo} es obligatorio.`);
+      const booleano = String(registro.isTroncoComun ?? '').trim().toLowerCase();
+      const valoresBooleanos = ['true', 'false', '1', '0', 'si', 'sí', 'no'];
+      if (!valoresBooleanos.includes(booleano)) {
+        throw new Error('isTroncoComun debe indicar verdadero o falso.');
       }
-    }
-
-    // Verifica que el grado exista
-    if (datos.gradoId && !gradosModel.findById(datos.gradoId)) {
-      motivos.push('El grado no existe en el sistema.');
-    }
-
-    // Comprueba el estado de la materia
-    const estados = ['Activa', 'Inactiva', 'En planeacion'];
-
-    if (datos.estado && !estados.includes(datos.estado)) {
-      motivos.push('El estado de la materia no es válido.');
-    }
-
-    // Verifica que profesorId sea un entero positivo
-    if (
-      datos.profesorId &&
-      (!Number.isInteger(Number(datos.profesorId)) ||
-       Number(datos.profesorId) <= 0)
-    ) {
-      motivos.push('profesorId debe ser un número entero positivo.');
-    }
-
-    // Detecta claves SEP repetidas
-    const clave = datos.claveSep.toLowerCase();
-
-    if (clave) {
-      if (claves.has(clave)) {
-        motivos.push('Clave SEP duplicada dentro del archivo.');
-      } else {
-        claves.add(clave);
+      const claveNormalizada = claveSep.toLowerCase();
+      if (claves.has(claveNormalizada)) {
+        throw new Error('Clave SEP duplicada dentro del archivo.');
       }
 
-      const existe = materiasExistentes.some(
-        materia =>
-          String(materia.claveSep).toLowerCase() === clave
-      );
-
-      if (existe) {
-        motivos.push('La clave SEP ya está registrada.');
-      }
-    }
-
-    // Convierte los grupos separados por punto y coma
-    // Acepta grupos desde Excel o desde la confirmación JSON
-    const grupos = Array.isArray(registro.gruposAsignados)
-      ? registro.gruposAsignados
-          .map(g => String(g).trim())
-          .filter(Boolean)
-      : String(registro.gruposAsignados ?? '')
-          .split(';')
-          .map(g => g.trim())
-          .filter(Boolean);
-
-    // Verifica que los grupos pertenezcan al grado indicado
-    for (const grupo of grupos) {
-      const existe = gruposExistentes.some(g =>
-        String(g.gradoId) === datos.gradoId &&
-        (
-          `${g.gradoId}° ${g.grupoLetra}` === grupo ||
-          g.nombre === grupo
-        )
-      );
-
-      if (!existe) {
-        motivos.push(
-          `El grupo ${grupo} no existe para el grado seleccionado.`
-        );
-      }
-    }
-
-    // Comprueba el valor de isTroncoComun
-    const booleano = datos.isTroncoComun.toLowerCase();
-
-    const valoresBooleanos = [
-      'true',
-      'false',
-      '1',
-      '0',
-      'si',
-      'sí',
-      'no'
-    ];
-
-    if (booleano && !valoresBooleanos.includes(booleano)) {
-      motivos.push('isTroncoComun debe indicar verdadero o falso.');
+      const preparado = materiasService.prepararMateria({
+        codigo: String(registro.codigo ?? '').trim(),
+        nombre: String(registro.nombre ?? '').trim(),
+        claveSep,
+        cargaHoraria: String(registro.cargaHoraria ?? '').trim(),
+        grupoIds,
+        profesorId: String(registro.profesorId ?? '').trim() || null,
+        estado: String(registro.estado ?? '').trim(),
+        isTroncoComun: ['true', '1', 'si', 'sí'].includes(booleano)
+      });
+      claves.add(claveNormalizada);
+      validos.push(preparado);
+    } catch (error) {
+      motivos.push(error.message);
     }
 
     if (motivos.length > 0) {
-      errores.push({
-        fila: indice + 2,
-        claveSep: datos.claveSep,
-        motivos
-      });
-    } else {
-      // Prepara los tipos de datos para el modelo existente
-
-      // Conserva gruposAsignados, aunque no tenga grupos
-      datos.gruposAsignados = grupos;
-
-      // Conserva profesorId, aunque esté vacío
-      datos.profesorId = datos.profesorId
-        ? Number(datos.profesorId)
-        : '';
-
-      // Convierte isTroncoComun a booleano cuando tiene valor
-      datos.isTroncoComun = booleano
-        ? ['true', '1', 'si', 'sí'].includes(booleano)
-        : '';
-
-      validos.push(datos);
+      errores.push({ fila: indice + 2, claveSep, motivos });
     }
   });
 

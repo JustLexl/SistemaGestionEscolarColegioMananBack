@@ -154,6 +154,8 @@ const plantillas = {
     'nombre',
     'claveSep',
     'cargaHoraria',
+    'cicloEscolarId',
+    'grupoIds',
     'gradoId',
     'gruposAsignados',
     'profesorId',

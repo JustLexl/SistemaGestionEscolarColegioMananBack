@@ -1,141 +1,66 @@
 const initialMaterias = require('../data/materias.seed');
 
-/**
- * Modelo de Datos para la tabla / entidad Materias.
- * Maneja el almacenamiento en memoria y métodos CRUD.
- */
 class MateriasModel {
   constructor() {
-    this.materias = [...initialMaterias];
+    this.materias = initialMaterias.map(materia => ({
+      ...materia,
+      grupoIds: [...materia.grupoIds]
+    }));
   }
 
-  findAll(filters = {}) {
-    const { searchTerm, gradoId, grupo, estado } = filters;
-    return this.materias.filter(materia => {
-      const matchSearch = !searchTerm ||
-        materia.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        materia.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        materia.claveSep.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        materia.profesorNombre.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchGrado = !gradoId || String(materia.gradoId) === String(gradoId);
-      const matchGrupo = !grupo || materia.gruposAsignados.some(g => g.toLowerCase().includes(grupo.toLowerCase()));
-      const matchEstado = !estado || materia.estado.toLowerCase() === estado.toLowerCase();
-
-      return matchSearch && matchGrado && matchGrupo && matchEstado;
-    });
+  findAll() {
+    return this.materias;
   }
 
   findById(id) {
-    const numericId = Number(id);
-    return this.materias.find(m => m.id === numericId) || null;
+    return this.materias.find(materia => materia.id === Number(id)) || null;
+  }
+
+  findByClaveSep(claveSep, excludeId = null) {
+    const clave = String(claveSep || '').trim().toLowerCase();
+    return this.materias.find(materia =>
+      materia.claveSep.toLowerCase() === clave &&
+      (excludeId === null || String(materia.id) !== String(excludeId))
+    ) || null;
   }
 
   findByProfesorId(profesorId) {
-    return this.materias.filter(
-      materia => materia.profesorId !== null &&
-        String(materia.profesorId) === String(profesorId)
+    return this.materias.filter(materia =>
+      materia.profesorId !== null && String(materia.profesorId) === String(profesorId)
     );
   }
 
   create(data) {
-    const maxId = this.materias.reduce((acc, m) => (m.id > acc ? m.id : acc), 0);
-    const id = maxId + 1;
-
-    const gruposAsignados = Array.isArray(data.gruposAsignados) && data.gruposAsignados.length > 0
-      ? data.gruposAsignados
-      : [`${data.gradoId || '1'}° A`];
-
-    const codigo = data.codigo ||
-      (data.claveSep ? data.claveSep.split('-')[0] : data.nombre.slice(0, 3).toUpperCase());
-
-    const alumnosImpactados = data.alumnosImpactados !== undefined
-      ? Number(data.alumnosImpactados)
-      : gruposAsignados.length * 36;
-
-    const newMateria = {
-      id,
-      codigo,
-      nombre: data.nombre.trim(),
-      claveSep: data.claveSep ? data.claveSep.trim() : `MAT-PRI-0${data.gradoId || 1}`,
-      cargaHoraria: data.cargaHoraria || '4 hrs/sem',
-      gradoId: String(data.gradoId || '1'),
-      gradoNombre: data.gradoNombre || `${data.gradoId || '1'}° Primaria`,
-      gruposAsignados,
-      profesorId: Number(data.profesorId) || 1,
-      profesorNombre: data.profesorNombre || 'Profra. Carmen Salinas',
-      profesorIniciales: data.profesorIniciales || 'CS',
-      cedula: data.cedula || 'DOC-2018-042',
-      alumnosImpactados,
-      gruposCount: gruposAsignados.length,
-      estado: data.estado || 'Activa',
-      isTroncoComun: Boolean(data.isTroncoComun)
-    };
-
-    this.materias.unshift(newMateria);
-    return newMateria;
+    const id = this.materias.reduce((max, materia) => Math.max(max, materia.id), 0) + 1;
+    const materia = { id, ...data, grupoIds: [...data.grupoIds] };
+    this.materias.unshift(materia);
+    return materia;
   }
 
   update(id, data) {
-    const numericId = Number(id);
-    const index = this.materias.findIndex(m => m.id === numericId);
+    const index = this.materias.findIndex(materia => materia.id === Number(id));
     if (index === -1) return null;
-
-    const grupos = data.gruposAsignados !== undefined ? data.gruposAsignados : this.materias[index].gruposAsignados;
-    const impactados = data.alumnosImpactados !== undefined ? Number(data.alumnosImpactados) : (grupos.length * 36);
-
     this.materias[index] = {
       ...this.materias[index],
-      ...(data.codigo !== undefined && { codigo: data.codigo }),
-      ...(data.nombre !== undefined && { nombre: data.nombre.trim() }),
-      ...(data.claveSep !== undefined && { claveSep: data.claveSep.trim() }),
-      ...(data.cargaHoraria !== undefined && { cargaHoraria: data.cargaHoraria }),
-      ...(data.gradoId !== undefined && { gradoId: String(data.gradoId) }),
-      ...(data.gradoNombre !== undefined && { gradoNombre: data.gradoNombre }),
-      ...(data.gruposAsignados !== undefined && { gruposAsignados: data.gruposAsignados, gruposCount: data.gruposAsignados.length }),
-      ...(data.profesorId !== undefined && { profesorId: Number(data.profesorId) }),
-      ...(data.profesorNombre !== undefined && { profesorNombre: data.profesorNombre }),
-      ...(data.profesorIniciales !== undefined && { profesorIniciales: data.profesorIniciales }),
-      ...(data.cedula !== undefined && { cedula: data.cedula }),
-      alumnosImpactados: impactados,
-      ...(data.estado !== undefined && { estado: data.estado }),
-      ...(data.isTroncoComun !== undefined && { isTroncoComun: Boolean(data.isTroncoComun) })
+      ...data,
+      id: Number(id),
+      grupoIds: data.grupoIds ? [...data.grupoIds] : this.materias[index].grupoIds
     };
     return this.materias[index];
   }
 
   delete(id) {
-    const numericId = Number(id);
-    const index = this.materias.findIndex(m => m.id === numericId);
+    const index = this.materias.findIndex(materia => materia.id === Number(id));
     if (index === -1) return false;
     this.materias.splice(index, 1);
     return true;
   }
 
   darDeBaja(id) {
-    const numericId = Number(id);
-    const materia = this.materias.find(m => m.id === numericId);
+    const materia = this.findById(id);
     if (!materia) return null;
     materia.estado = 'Inactiva';
     return materia;
-  }
-
-  getMetrics() {
-    const total = this.materias.length;
-    const activas = this.materias.filter(m => m.estado === 'Activa').length;
-    const enPlaneacion = this.materias.filter(m => m.estado === 'En planeacion').length;
-    const inactivas = this.materias.filter(m => m.estado === 'Inactiva').length;
-    const totalImpactados = this.materias.reduce((acc, m) => acc + (m.estado === 'Activa' ? m.alumnosImpactados : 0), 0);
-    const profesoresAsignados = new Set(this.materias.filter(m => m.estado === 'Activa').map(m => m.profesorId)).size;
-
-    return {
-      total,
-      activas,
-      enPlaneacion,
-      inactivas,
-      totalImpactados,
-      profesoresAsignados
-    };
   }
 }
 

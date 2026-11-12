@@ -6,7 +6,9 @@ class MateriasController {
       const filters = {
         searchTerm: req.query.search || req.query.searchTerm,
         gradoId: req.query.gradoId,
-        grupo: req.query.grupo,
+        grupoId: req.query.grupoId,
+        cicloEscolarId: req.query.cicloEscolarId,
+        profesorId: req.query.profesorId,
         estado: req.query.estado
       };
       const materias = materiasService.getAllMaterias(filters);
@@ -85,7 +87,9 @@ class MateriasController {
 
   getMetrics(req, res, next) {
     try {
-      const metrics = materiasService.getMateriasMetrics();
+      const metrics = materiasService.getMateriasMetrics({
+        cicloEscolarId: req.query.cicloEscolarId
+      });
       res.status(200).json({
         success: true,
         data: metrics
