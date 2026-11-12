@@ -9,7 +9,8 @@
     "test": "node --test",
     "test:e2e": "node scripts/validar-demo2-e2e.js",
     "test:e2e:demo2.3": "node scripts/validar-demo2.3-e2e.js",
-    "test:e2e:demo2.4": "node scripts/validar-demo2.4-e2e.js"
+    "test:e2e:demo2.4": "node scripts/validar-demo2.4-e2e.js",
+    "test:e2e:demo2.5": "node scripts/validar-demo2.5-e2e.js"
   },
   "keywords": [
     "colegio-manantial",

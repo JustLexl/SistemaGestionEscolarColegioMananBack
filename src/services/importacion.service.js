@@ -8,6 +8,7 @@ const materiasService = require('./materias.service');
 const rolesService = require('./roles.service');
 const rolesModel = require('../models/roles.model');
 const profesoresModel = require('../models/profesores.model');
+const asistenciasService = require('./asistencias.service');
 
 // VALIDACIÓN DE ALUMNOS
 
@@ -682,11 +683,118 @@ function validarProfesores(registros) {
   };
 }
 
+// VALIDACIÓN DE ASISTENCIAS
+
+function validarAsistencias(registros) {
+  const validos = [];
+  const errores = [];
+  const claves = new Set();
+
+  if (!Array.isArray(registros) || registros.length === 0) {
+    return {
+      totalRegistros: 0,
+      totalValidos: 0,
+      totalErrores: 1,
+      validos,
+      errores: ['El archivo está vacío o no contiene registros.']
+    };
+  }
+
+  const encabezados = Object.keys(registros[0]);
+  const esCanonico = encabezados.includes('alumnoId');
+  const requeridos = esCanonico
+    ? ['alumnoId', 'fecha', 'estado']
+    : ['matricula', 'fecha', 'estado'];
+  const faltantes = requeridos.filter(campo => !encabezados.includes(campo));
+
+  if (faltantes.length > 0) {
+    return {
+      totalRegistros: registros.length,
+      totalValidos: 0,
+      totalErrores: 1,
+      validos,
+      errores: [`Faltan columnas: ${faltantes.join(', ')}`]
+    };
+  }
+
+  registros.forEach((registro, indice) => {
+    const matricula = String(registro.matricula ?? '').trim();
+    const fecha = String(registro.fecha ?? '').trim();
+    const estado = String(registro.estado ?? '').trim();
+    const motivos = [];
+    let alumno = null;
+
+    if (matricula) {
+      alumno = alumnosModel.findByMatricula(matricula);
+      if (!alumno) {
+        motivos.push(`No existe un alumno con la matrícula ${matricula}.`);
+      }
+    } else if (registro.alumnoId !== undefined && registro.alumnoId !== '') {
+      alumno = alumnosModel.findById(registro.alumnoId);
+      if (!alumno) {
+        motivos.push(`No existe un alumno con el ID ${registro.alumnoId}.`);
+      }
+    } else {
+      motivos.push('El campo matricula es obligatorio.');
+    }
+
+    const alumnoId = alumno?.id ?? Number(registro.alumnoId);
+    const datos = { alumnoId, fecha, estado };
+
+    try {
+      asistenciasService.validarAsistencia(datos);
+    } catch (error) {
+      motivos.push(error.message);
+    }
+
+    if (alumno) {
+      try {
+        asistenciasService.validarAlumnoActivo(alumno.id);
+      } catch (error) {
+        motivos.push(error.message);
+      }
+
+      const clave = `${alumno.id}|${fecha}`;
+      if (claves.has(clave)) {
+        motivos.push('Asistencia duplicada dentro del archivo para el alumno y la fecha.');
+      } else {
+        claves.add(clave);
+      }
+
+      try {
+        asistenciasService.validarAsistenciaDuplicada(alumno.id, fecha);
+      } catch (error) {
+        motivos.push(error.message);
+      }
+    }
+
+    if (motivos.length > 0) {
+      errores.push({ fila: indice + 2, matricula, fecha, motivos });
+    } else {
+      validos.push({
+        matricula: matricula || alumno.matricula,
+        alumnoId: Number(alumno.id),
+        fecha,
+        estado
+      });
+    }
+  });
+
+  return {
+    totalRegistros: registros.length,
+    totalValidos: validos.length,
+    totalErrores: errores.length,
+    validos,
+    errores
+  };
+}
+
 // Exporta las funciones para utilizarlas en las rutas
 module.exports = {
   validarAlumnos,
   validarGrados,
   validarGrupos,
   validarMaterias,
-  validarProfesores
+  validarProfesores,
+  validarAsistencias
 };

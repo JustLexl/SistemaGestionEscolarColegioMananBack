@@ -81,9 +81,13 @@ function leerExcel(buffer) {
       datos.fechaNacimiento = convertirFecha(datos.fechaNacimiento);
     }
 
+    if (Object.prototype.hasOwnProperty.call(datos, 'fecha')) {
+      datos.fecha = convertirFecha(datos.fecha);
+    }
+
     return datos;
   });
 }
 
 // Exporta la función utilizada por el controlador
-module.exports = { leerExcel };
+module.exports = { leerExcel, convertirFecha };

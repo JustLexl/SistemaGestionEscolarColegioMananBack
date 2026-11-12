@@ -1,5 +1,6 @@
 
 const { leerExcel } = require('../utils/excel.parser');
+const plantillas = require('../config/importacion-plantillas');
 
 // FUNCIÓN GENERAL PARA VALIDAR ARCHIVOS
 // ==================================================
@@ -101,37 +102,6 @@ function procesarConfirmacion(validar, registrar, entidad) {
   };
 }
 
-
- // PLANTILLAS OFICIALES
- // ==================================================
-
- // Encabezados requeridos para cada entidad
-const plantillas = {
-  alumnos: [
-    'matricula', 'nombre', 'fechaNacimiento',
-    'grado', 'grupo', 'cicloEscolarId', 'tutor'
-  ],
-
-  profesores: [
-    'nombre', 'puesto', 'correo', 'cedula', 'estado'
-  ],
-
-  grados: [
-    'nombre', 'nivel', 'ciclo'
-  ],
-
-  grupos: [
-    'gradoId', 'nombre', 'grupoLetra', 'clave',
-    'aula', 'edificio', 'turno', 'profesorId',
-    'alumnosMax', 'estado'
-  ],
-
-  materias: [
-    'codigo', 'nombre', 'claveSep', 'cargaHoraria',
-    'cicloEscolarId', 'grupoIds', 'gradoId', 'gruposAsignados', 'profesorId',
-    'estado', 'isTroncoComun'
-  ]
-};
 
 // DESCARGAR PLANTILLAS
 // ==================================================

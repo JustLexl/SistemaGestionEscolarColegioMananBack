@@ -31,9 +31,12 @@ class AsistenciasService {
       throw error;
     }
 
-    if (typeof data.fecha !== 'string' ||
-        !/^\d{4}-\d{2}-\d{2}$/.test(data.fecha) ||
-        Number.isNaN(Date.parse(data.fecha))) {
+    const fechaValida = typeof data.fecha === 'string' &&
+      /^\d{4}-\d{2}-\d{2}$/.test(data.fecha) &&
+      !Number.isNaN(Date.parse(`${data.fecha}T00:00:00.000Z`)) &&
+      new Date(`${data.fecha}T00:00:00.000Z`).toISOString().slice(0, 10) === data.fecha;
+
+    if (!fechaValida) {
       const error = new Error('La fecha debe tener el formato YYYY-MM-DD y ser válida.');
       error.status = 400;
       throw error;

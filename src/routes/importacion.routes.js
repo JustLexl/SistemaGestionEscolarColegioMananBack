@@ -13,7 +13,8 @@ const {
   validarGrados,
   validarGrupos,
   validarMaterias,
-  validarProfesores
+  validarProfesores,
+  validarAsistencias
 } = require('../services/importacion.service');
 
 const alumnosService = require('../services/alumnos.service');
@@ -21,6 +22,7 @@ const gradosService = require('../services/grados.service');
 const gruposService = require('../services/grupos.service');
 const materiasService = require('../services/materias.service');
 const usuariosProfesoresService = require('../services/usuarios-profesores.service');
+const asistenciasService = require('../services/asistencias.service');
 
 const router = express.Router();
 
@@ -105,64 +107,15 @@ router.post(
   procesarValidacion(validarProfesores, 'profesores')
 );
 
+router.post(
+  '/asistencias/validar',
+  validarArchivo,
+  procesarValidacion(validarAsistencias, 'asistencias')
+);
+
 
 // PLANTILLAS OFICIALES
 // ==================================================
-
-// Define los encabezados de cada plantilla CSV
-const plantillas = {
-
-  alumnos: [
-    'matricula',
-    'nombre',
-    'fechaNacimiento',
-    'grado',
-    'grupo',
-    'cicloEscolarId',
-    'tutor'
-  ],
-
-  profesores: [
-    'nombre',
-    'puesto',
-    'correo',
-    'cedula',
-    'estado'
-  ],
-
-  grados: [
-    'nivel',
-    'numeroGrado',
-    'cicloEscolarId'
-  ],
-
-  grupos: [
-    'gradoId',
-    'nombre',
-    'grupoLetra',
-    'clave',
-    'aula',
-    'edificio',
-    'turno',
-    'profesorId',
-    'alumnosMax',
-    'estado'
-  ],
-
-  materias: [
-    'codigo',
-    'nombre',
-    'claveSep',
-    'cargaHoraria',
-    'cicloEscolarId',
-    'grupoIds',
-    'gradoId',
-    'gruposAsignados',
-    'profesorId',
-    'estado',
-    'isTroncoComun'
-  ]
-};
 
 // DESCARGAR PLANTILLAS
 // ==================================================
@@ -215,6 +168,15 @@ router.post(
     validarProfesores,
     profesor => usuariosProfesoresService.crearUsuarioConPerfilSiCorresponde(profesor),
     'profesores'
+  )
+);
+
+router.post(
+  '/asistencias/confirmar',
+  procesarConfirmacion(
+    validarAsistencias,
+    asistencia => asistenciasService.createAsistencia(asistencia),
+    'asistencias'
   )
 );
 
