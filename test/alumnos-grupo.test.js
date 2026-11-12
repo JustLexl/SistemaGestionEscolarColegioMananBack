@@ -204,4 +204,22 @@ describe('Alumno relacionado con Grupo real', { concurrency: false }, () => {
     assert.equal(Object.hasOwn(resultado.validos[0], 'grado'), false);
     assert.equal(Object.hasOwn(resultado.validos[0], 'grupo'), false);
   });
+
+  test('revalida el formato canónico con grupoId antes de confirmar la importación', () => {
+    const validacion = validarAlumnos([{
+      matricula: 'CM-IMP-002',
+      nombre: 'Alumno Importado Confirmable',
+      fechaNacimiento: '2015-02-10',
+      grado: '1° Secundaria',
+      grupo: 'Grupo A',
+      cicloEscolarId: 2,
+      tutor: 'Tutor Importado'
+    }]);
+
+    const revalidacion = validarAlumnos(validacion.validos);
+
+    assert.equal(revalidacion.totalValidos, 1);
+    assert.equal(revalidacion.totalErrores, 0);
+    assert.equal(revalidacion.validos[0].grupoId, 10);
+  });
 });

@@ -21,6 +21,13 @@ const CAMPOS_OBLIGATORIOS = [
   'tutor'
 ];
 
+const CAMPOS_BASE_ALUMNO = [
+  'matricula',
+  'nombre',
+  'fechaNacimiento',
+  'tutor'
+];
+
 function normalizarAcademico(valor) {
   return String(valor ?? '')
     .trim()
@@ -78,8 +85,12 @@ function validarAlumnos(registros) {
 
   // Comprueba que existan las columnas necesarias
   const encabezados = Object.keys(registros[0]);
+  const esCanonico = encabezados.includes('grupoId');
+  const camposRequeridos = esCanonico
+    ? [...CAMPOS_BASE_ALUMNO, 'grupoId']
+    : CAMPOS_OBLIGATORIOS;
 
-  const faltantes = CAMPOS_OBLIGATORIOS.filter(
+  const faltantes = camposRequeridos.filter(
     campo => !encabezados.includes(campo)
   );
 
@@ -97,7 +108,7 @@ function validarAlumnos(registros) {
     const fila = indice + 2;
     const datos = {};
 
-    for (const campo of CAMPOS_OBLIGATORIOS) {
+    for (const campo of CAMPOS_BASE_ALUMNO) {
       datos[campo] = String(registro[campo] ?? '').trim();
     }
 
@@ -107,15 +118,22 @@ function validarAlumnos(registros) {
 
     const erroresFila = [];
 
-    try {
-      const grupo = resolverGrupoImportado(
-        datos.grado,
-        datos.grupo,
-        registro.cicloEscolarId
-      );
-      datos.grupoId = grupo.id;
-    } catch (error) {
-      erroresFila.push(error.message);
+    if (esCanonico) {
+      datos.grupoId = registro.grupoId;
+    } else {
+      datos.grado = String(registro.grado ?? '').trim();
+      datos.grupo = String(registro.grupo ?? '').trim();
+
+      try {
+        const grupo = resolverGrupoImportado(
+          datos.grado,
+          datos.grupo,
+          registro.cicloEscolarId
+        );
+        datos.grupoId = grupo.id;
+      } catch (error) {
+        erroresFila.push(error.message);
+      }
     }
 
     // Reutiliza las validaciones del backend de alumnos

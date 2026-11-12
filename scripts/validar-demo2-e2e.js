@@ -65,16 +65,16 @@ async function main() {
   const gradoCreado = await request('/grados', {
     method: 'POST',
     body: JSON.stringify({
-      nombre: '1° Secundaria Demo',
       nivel: 'Secundaria',
-      ciclo: '2026–2027',
+      numeroGrado: 1,
+      cicloEscolarId: 3,
     }),
   }, 201);
   const gradoEditado = await request(`/grados/${gradoCreado.data.id}`, {
     method: 'PUT',
-    body: JSON.stringify({ nombre: 'Primero de Secundaria Demo' }),
+    body: JSON.stringify({ numeroGrado: 2 }),
   });
-  assert.equal(gradoEditado.data.nombre, 'Primero de Secundaria Demo');
+  assert.equal(gradoEditado.data.nombre, '2° Secundaria');
 
   const grupoCreado = await request('/grupos', {
     method: 'POST',
@@ -136,7 +136,7 @@ async function main() {
   const claveDuplicada = await request('/grupos', {
     method: 'POST',
     body: JSON.stringify({
-      gradoId: '6',
+      gradoId: gradoCreado.data.id,
       grupoLetra: 'Y',
       clave: 'CM-SEC-DEMO-Z-26',
       profesorId: 3,
@@ -251,8 +251,8 @@ async function main() {
   assert.equal(validacionXlsx.totalErrores, 0);
 
   const xlsxFecha = crearXlsx([
-    ['matricula', 'nombre', 'fechaNacimiento', 'grado', 'grupo', 'tutor'],
-    ['CM-FECHA-DEMO-001', 'Alumno Fecha Demo', 45292, '4° Primaria', 'Grupo A', 'Tutor Demo'],
+    ['matricula', 'nombre', 'fechaNacimiento', 'grado', 'grupo', 'cicloEscolarId', 'tutor'],
+    ['CM-FECHA-DEMO-001', 'Alumno Fecha Demo', 45292, '1° Secundaria', 'Grupo A', 2, 'Tutor Demo'],
   ]);
   const validacionFecha = await validarArchivo(
     'alumnos',
