@@ -115,7 +115,7 @@ function validarGrados(registros) {
   const errores = [];
   const claves = new Set();
 
-  const campos = ['nombre', 'nivel', 'ciclo'];
+  const campos = ['nivel', 'numeroGrado', 'cicloEscolarId'];
 
   if (!Array.isArray(registros) || registros.length === 0) {
     return {
@@ -159,6 +159,11 @@ function validarGrados(registros) {
       }
     }
 
+    const numeroGrado = Number(datos.numeroGrado);
+    const cicloEscolarId = Number(datos.cicloEscolarId);
+    if (!Number.isInteger(numeroGrado)) motivos.push('numeroGrado debe ser un entero.');
+    if (!Number.isInteger(cicloEscolarId)) motivos.push('cicloEscolarId debe ser un entero.');
+
     // Genera una clave para identificar registros repetidos
     const clave = campos
       .map(campo => datos[campo].toLowerCase())
@@ -186,11 +191,15 @@ function validarGrados(registros) {
     if (motivos.length > 0) {
       errores.push({
         fila: indice + 2,
-        nombre: datos.nombre,
+        nombre: `${datos.numeroGrado}° ${datos.nivel}`,
         motivos
       });
     } else {
-      validos.push(datos);
+      validos.push({
+        nivel: datos.nivel,
+        numeroGrado,
+        cicloEscolarId
+      });
     }
   });
 

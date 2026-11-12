@@ -1,6 +1,7 @@
 const gruposModel = require('../models/grupos.model');
 const gradosModel = require('../models/grados.model');
 const profesoresModel = require('../models/profesores.model');
+const { ESTADOS_CICLO } = require('../utils/ciclo-escolar');
 
 const TURNOS_PERMITIDOS = ['matutino', 'vespertino'];
 const ESTADOS_PERMITIDOS = ['Activo', 'Inactivo'];
@@ -21,11 +22,9 @@ function obtenerIniciales(nombre) {
 }
 
 function resolverLetra(data, existing) {
-  const nombre = String(data.nombre || '');
-  const coincidencia = nombre.match(/Grupo\s+([A-Z0-9]+)/i);
-  return String(
-    data.grupoLetra ?? coincidencia?.[1] ?? existing?.grupoLetra ?? ''
-  ).trim().toUpperCase();
+  const coincidencia = String(data.nombre || '').match(/Grupo\s+([A-Z0-9]+)/i);
+  return String(data.grupoLetra ?? coincidencia?.[1] ?? existing?.grupoLetra ?? '')
+    .trim().toUpperCase();
 }
 
 function normalizarProfesorId(valor) {
@@ -44,22 +43,16 @@ class GruposService {
 
   getGrupoById(id) {
     const grupo = gruposModel.findById(id);
-    if (!grupo) {
-      throw crearError(`El grupo con ID ${id} no fue encontrado.`, 404);
-    }
+    if (!grupo) throw crearError(`El grupo con ID ${id} no fue encontrado.`, 404);
     return grupo;
   }
 
   prepararGrupo(data = {}, existing = null) {
     const gradoId = String(data.gradoId ?? existing?.gradoId ?? '').trim();
-    if (!gradoId) {
-      throw crearError('El gradoId es obligatorio.', 400);
-    }
+    if (!gradoId) throw crearError('El gradoId es obligatorio.', 400);
 
     const grado = gradosModel.findById(gradoId);
-    if (!grado) {
-      throw crearError(`El grado con ID ${gradoId} no fue encontrado.`, 404);
-    }
+    if (!grado) throw crearError(`El grado con ID ${gradoId} no fue encontrado.`, 404);
 
     const grupoLetra = resolverLetra(data, existing);
     if (!grupoLetra || !/^[A-Z0-9]{1,5}$/.test(grupoLetra)) {
@@ -75,21 +68,16 @@ class GruposService {
     const estado = ESTADOS_PERMITIDOS.find(
       permitido => permitido.toLowerCase() === estadoEntrada.toLowerCase()
     );
-    if (!estado) {
-      throw crearError(`El estado debe ser: ${ESTADOS_PERMITIDOS.join(' o ')}.`, 400);
-    }
+    if (!estado) throw crearError(`El estado debe ser: ${ESTADOS_PERMITIDOS.join(' o ')}.`, 400);
 
     const profesorEntrada = Object.prototype.hasOwnProperty.call(data, 'profesorId')
       ? data.profesorId
       : existing?.profesorId ?? null;
     const profesorId = normalizarProfesorId(profesorEntrada);
     let profesor = null;
-
     if (profesorId !== null) {
       profesor = profesoresModel.findById(profesorId);
-      if (!profesor) {
-        throw crearError(`El profesor con ID ${profesorId} no fue encontrado.`, 404);
-      }
+      if (!profesor) throw crearError(`El profesor con ID ${profesorId} no fue encontrado.`, 404);
       if (profesor.estado !== 'Activo') {
         throw crearError('El profesor seleccionado está inactivo y no puede asignarse.', 409);
       }
@@ -104,13 +92,13 @@ class GruposService {
       throw crearError('La matrícula actual debe estar entre 0 y la capacidad máxima.', 400);
     }
 
-    const sufijoCiclo = String(grado.ciclo).match(/(\d{2})\D*$/)?.[1] || '24';
+    const sufijoCiclo = grado.cicloEscolar.nombre.match(/(\d{2})\D*$/)?.[1] || '00';
+    const prefijoNivel = grado.nivel === 'Secundaria' ? 'SEC' : 'PRI';
     const clave = String(
-      data.clave ?? existing?.clave ?? `CM-PRI-${gradoId}${grupoLetra}-${sufijoCiclo}`
+      data.clave ?? existing?.clave ??
+      `CM-${prefijoNivel}-${grado.numeroGrado}${grupoLetra}-${sufijoCiclo}`
     ).trim().toUpperCase();
-    if (!clave) {
-      throw crearError('La clave del grupo es obligatoria.', 400);
-    }
+    if (!clave) throw crearError('La clave del grupo es obligatoria.', 400);
 
     return {
       gradoId,
@@ -129,7 +117,8 @@ class GruposService {
       alumnosActuales,
       alumnosMax,
       estado,
-      isBase: data.isBase ?? existing?.isBase ?? false
+      isBase: data.isBase ?? existing?.isBase ?? false,
+      grado
     };
   }
 
@@ -144,24 +133,52 @@ class GruposService {
 
   createGrupo(data) {
     const preparado = this.prepararGrupo(data);
+    if (preparado.grado.cicloEscolar.estado !== ESTADOS_CICLO.PLANEACION) {
+      throw crearError('Solo se pueden crear grupos en grados de ciclos en planeación.', 409);
+    }
     this.validarDuplicados(preparado);
-    return gruposModel.create(preparado);
+    const { grado, ...persistible } = preparado;
+    return gruposModel.create(persistible);
   }
 
   updateGrupo(id, data) {
     const existing = this.getGrupoById(id);
+    const estadoCiclo = existing.cicloEscolar.estado;
+    if (estadoCiclo === ESTADOS_CICLO.FINALIZADO) {
+      throw crearError('Los grupos de un ciclo finalizado son de solo lectura.', 409);
+    }
+    if (
+      estadoCiclo === ESTADOS_CICLO.ACTIVO &&
+      data.gradoId !== undefined && String(data.gradoId) !== String(existing.gradoId)
+    ) {
+      throw crearError('No se puede cambiar el grado ni el ciclo de un grupo activo.', 409);
+    }
+
     const preparado = this.prepararGrupo(data, existing);
+    if (
+      estadoCiclo === ESTADOS_CICLO.PLANEACION &&
+      Number(preparado.grado.cicloEscolarId) !== Number(existing.cicloEscolarId)
+    ) {
+      throw crearError('Un grupo en planeación solo puede cambiar de grado dentro del mismo ciclo.', 409);
+    }
     this.validarDuplicados(preparado, existing.id);
-    return gruposModel.update(id, preparado);
+    const { grado, ...persistible } = preparado;
+    return gruposModel.update(id, persistible);
   }
 
   deleteGrupo(id) {
-    this.getGrupoById(id);
+    const existing = this.getGrupoById(id);
+    if (existing.cicloEscolar.estado !== ESTADOS_CICLO.PLANEACION) {
+      throw crearError('Solo se pueden eliminar grupos de ciclos en planeación.', 409);
+    }
     return gruposModel.delete(id);
   }
 
   toggleGrupoEstado(id) {
-    this.getGrupoById(id);
+    const existing = this.getGrupoById(id);
+    if (existing.cicloEscolar.estado === ESTADOS_CICLO.FINALIZADO) {
+      throw crearError('Los grupos de un ciclo finalizado son de solo lectura.', 409);
+    }
     return gruposModel.toggleEstado(id);
   }
 

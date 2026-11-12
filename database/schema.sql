@@ -18,6 +18,7 @@ DROP TABLE IF EXISTS materias;
 DROP TABLE IF EXISTS grupos;
 DROP TABLE IF EXISTS profesores;
 DROP TABLE IF EXISTS grados;
+DROP TABLE IF EXISTS ciclos_escolares;
 DROP TABLE IF EXISTS roles;
 
 SET FOREIGN_KEY_CHECKS = 1;
@@ -55,20 +56,42 @@ CREATE TABLE profesores (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- 3. TABLA: grados
--- Almacena los niveles y grados escolares del colegio (1° a 6° de Primaria).
+-- 3. TABLA: ciclos_escolares
+-- El estado se calcula en la aplicación a partir de las fechas; no se persiste.
 -- -----------------------------------------------------------------------------
-CREATE TABLE grados (
-    id VARCHAR(10) PRIMARY KEY, -- '1', '2', '3', '4', '5', '6'
-    nombre VARCHAR(50) NOT NULL, -- Ej: '4° Primaria'
-    nivel VARCHAR(50) NOT NULL DEFAULT 'Primaria',
-    ciclo VARCHAR(20) NOT NULL DEFAULT '2024–2025',
+CREATE TABLE ciclos_escolares (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(20) NOT NULL UNIQUE,
+    fecha_inicio DATE NOT NULL,
+    fecha_fin DATE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT chk_ciclo_fechas CHECK (fecha_inicio < fecha_fin)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- 4. TABLA: grupos
+-- 4. TABLA: grados
+-- El nombre se deriva de numero_grado y nivel.
+-- -----------------------------------------------------------------------------
+CREATE TABLE grados (
+    id VARCHAR(10) PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL, -- Ej: '4° Primaria'
+    nivel ENUM('Primaria', 'Secundaria') NOT NULL,
+    numero_grado TINYINT UNSIGNED NOT NULL,
+    ciclo_escolar_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (ciclo_escolar_id) REFERENCES ciclos_escolares(id)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    UNIQUE KEY uq_grado_ciclo_nivel_numero (ciclo_escolar_id, nivel, numero_grado),
+    CONSTRAINT chk_grado_rango CHECK (
+        (nivel = 'Primaria' AND numero_grado BETWEEN 1 AND 6) OR
+        (nivel = 'Secundaria' AND numero_grado BETWEEN 1 AND 3)
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- 5. TABLA: grupos
 -- Almacena las aulas/secciones de cada grado escolar.
 -- -----------------------------------------------------------------------------
 CREATE TABLE grupos (
@@ -191,14 +214,21 @@ INSERT INTO profesores (id, usuario_id, nombre, cedula, estado) VALUES
 (6, NULL, 'Profra. Sofía Ramírez', 'DOC-2020-031', 'Inactivo'),
 (7, NULL, 'Prof. Miguel Ángel Torres', 'DOC-2017-088', 'Activo');
 
+-- Ciclos escolares
+INSERT INTO ciclos_escolares (id, nombre, fecha_inicio, fecha_fin) VALUES
+(1, '2024–2025', '2024-08-26', '2025-07-11'),
+(2, '2026–2027', '2026-08-31', '2027-07-09'),
+(3, '2027–2028', '2027-08-30', '2028-07-14');
+
 -- Grados
-INSERT INTO grados (id, nombre, nivel, ciclo) VALUES
-('1', '1° Primaria', 'Primaria', '2024–2025'),
-('2', '2° Primaria', 'Primaria', '2024–2025'),
-('3', '3° Primaria', 'Primaria', '2024–2025'),
-('4', '4° Primaria', 'Primaria', '2024–2025'),
-('5', '5° Primaria', 'Primaria', '2024–2025'),
-('6', '6° Primaria', 'Primaria', '2024–2025');
+INSERT INTO grados (id, nombre, nivel, numero_grado, ciclo_escolar_id) VALUES
+('1', '1° Primaria', 'Primaria', 1, 1),
+('2', '2° Primaria', 'Primaria', 2, 1),
+('3', '3° Primaria', 'Primaria', 3, 1),
+('4', '4° Primaria', 'Primaria', 4, 1),
+('5', '5° Primaria', 'Primaria', 5, 1),
+('6', '6° Primaria', 'Primaria', 6, 1),
+('7', '1° Secundaria', 'Secundaria', 1, 2);
 
 -- Grupos
 INSERT INTO grupos (id, grado_id, grado_nombre, grupo_letra, nombre, clave, aula, edificio, turno, profesor_id, profesor_nombre, profesor_iniciales, cedula, alumnos_actuales, alumnos_max, estado, is_base) VALUES
@@ -210,7 +240,8 @@ INSERT INTO grupos (id, grado_id, grado_nombre, grupo_letra, nombre, clave, aula
 (6, '1', '1° Grado', 'A', '1° Grado - Grupo A', 'CM-PRI-1A-24', 'Aula 101', 'Edificio A', 'matutino', 6, 'Profra. Sofía Ramírez', 'SR', 'DOC-2020-031', 32, 40, 'Activo', FALSE),
 (7, '2', '2° Grado', 'A', '2° Grado - Grupo A', 'CM-PRI-2A-24', 'Aula 103', 'Edificio A', 'matutino', 7, 'Prof. Miguel Ángel Torres', 'MT', 'DOC-2017-088', 35, 40, 'Activo', FALSE),
 (8, '1', '1° Grado', 'B', '1° Grado - Grupo B', 'CM-PRI-1B-24', 'Aula 104', 'Edificio A', 'matutino', 6, 'Profra. Sofía Ramírez', 'SR', 'DOC-2020-031', 30, 40, 'Activo', FALSE),
-(9, '2', '2° Grado', 'B', '2° Grado - Grupo B', 'CM-PRI-2B-24', 'Aula 105', 'Edificio A', 'matutino', 7, 'Prof. Miguel Ángel Torres', 'MT', 'DOC-2017-088', 33, 40, 'Activo', FALSE);
+(9, '2', '2° Grado', 'B', '2° Grado - Grupo B', 'CM-PRI-2B-24', 'Aula 105', 'Edificio A', 'matutino', 7, 'Prof. Miguel Ángel Torres', 'MT', 'DOC-2017-088', 33, 40, 'Activo', FALSE),
+(10, '7', '1° Secundaria', 'A', '1° Secundaria - Grupo A', 'CM-SEC-1A-26', 'Aula S-101', 'Edificio Secundaria', 'matutino', 3, 'Prof. Roberto Carlos Valdés', 'RV', 'DOC-2021-095', 28, 35, 'Activo', FALSE);
 
 -- Materias
 INSERT INTO materias (id, codigo, nombre, clave_sep, carga_horaria, grado_id, grado_nombre, profesor_id, profesor_nombre, profesor_iniciales, cedula, alumnos_impactados, grupos_count, estado, is_tronco_comun) VALUES

@@ -11,6 +11,7 @@ const profesoresRoutes = require('./profesores.routes');
 const calificacionesRoutes = require('./calificaciones.routes');
 const authRoutes = require('./auth.routes');
 const importacionRoutes = require('./importacion.routes');
+const ciclosEscolaresRoutes = require('./ciclos-escolares.routes');
 
 // Verificación de estado de la API
 router.get('/health', (req, res) => {
@@ -23,6 +24,7 @@ router.get('/health', (req, res) => {
 
 // Módulos
 router.use('/roles', rolesRoutes);
+router.use('/ciclos-escolares', ciclosEscolaresRoutes);
 router.use('/grados', gradosRoutes);
 router.use('/grupos', gruposRoutes);
 router.use('/materias', materiasRoutes);

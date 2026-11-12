@@ -27,6 +27,7 @@ app.get('/', (req, res) => {
     endpoints: {
       health: '/api/health',
       roles: '/api/roles',
+      ciclosEscolares: '/api/ciclos-escolares',
       grados: '/api/grados',
       grupos: '/api/grupos',
       materias: '/api/materias'
@@ -64,6 +65,7 @@ app.listen(PORT, () => {
   console.log(` Base URL: http://localhost:${PORT}`);
   console.log(` Health:   http://localhost:${PORT}/api/health`);
   console.log(` Roles:    http://localhost:${PORT}/api/roles`);
+  console.log(` Ciclos:   http://localhost:${PORT}/api/ciclos-escolares`);
   console.log(` Grados:   http://localhost:${PORT}/api/grados`);
   console.log(` Grupos:   http://localhost:${PORT}/api/grupos`);
   console.log(` Materias: http://localhost:${PORT}/api/materias`);

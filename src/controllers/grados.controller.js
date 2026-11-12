@@ -5,7 +5,8 @@ class GradosController {
     try {
       const filters = {
         nivel: req.query.nivel,
-        ciclo: req.query.ciclo
+        ciclo: req.query.ciclo,
+        cicloEscolarId: req.query.cicloEscolarId
       };
       const grados = gradosService.getAllGrados(filters);
       res.status(200).json({

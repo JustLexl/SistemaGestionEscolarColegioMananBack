@@ -173,6 +173,25 @@ const initialGrupos = [
     alumnosActuales: 33,
     alumnosMax: 40,
     estado: 'Activo'
+  },
+  {
+    id: 10,
+    gradoId: '7',
+    gradoNombre: '1° Secundaria',
+    grupoLetra: 'A',
+    nombre: '1° Secundaria - Grupo A',
+    clave: 'CM-SEC-1A-26',
+    aula: 'Aula S-101',
+    edificio: 'Edificio Secundaria',
+    turno: 'matutino',
+    profesorId: 3,
+    profesorNombre: 'Prof. Roberto Carlos Valdés',
+    profesorIniciales: 'RV',
+    cedula: 'DOC-2021-095',
+    materias: [],
+    alumnosActuales: 28,
+    alumnosMax: 35,
+    estado: 'Activo'
   }
 ];
 

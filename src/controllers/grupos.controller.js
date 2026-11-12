@@ -6,6 +6,7 @@ class GruposController {
       const filters = {
         searchTerm: req.query.search || req.query.searchTerm,
         gradoId: req.query.gradoId,
+        cicloEscolarId: req.query.cicloEscolarId,
         turno: req.query.turno,
         estado: req.query.estado
       };

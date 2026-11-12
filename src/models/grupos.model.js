@@ -1,4 +1,16 @@
 const initialGrupos = require('../data/grupos.seed');
+const gradosModel = require('./grados.model');
+
+function serializar(grupo) {
+  if (!grupo) return null;
+  const grado = gradosModel.findById(grupo.gradoId);
+  return {
+    ...grupo,
+    grado,
+    cicloEscolarId: grado?.cicloEscolarId ?? null,
+    cicloEscolar: grado?.cicloEscolar ?? null
+  };
+}
 
 /**
  * Modelo de Datos para la tabla / entidad Grupos.
@@ -10,7 +22,7 @@ class GruposModel {
   }
 
   findAll(filters = {}) {
-    const { searchTerm, gradoId, turno, estado } = filters;
+    const { searchTerm, gradoId, turno, estado, cicloEscolarId } = filters;
     return this.grupos.filter(grupo => {
       const matchSearch = !searchTerm ||
         grupo.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -21,21 +33,24 @@ class GruposModel {
       const matchGrado = !gradoId || String(grupo.gradoId) === String(gradoId);
       const matchTurno = !turno || grupo.turno.toLowerCase() === turno.toLowerCase();
       const matchEstado = !estado || grupo.estado.toLowerCase() === estado.toLowerCase();
+      const grado = gradosModel.findById(grupo.gradoId);
+      const matchCiclo = !cicloEscolarId ||
+        Number(grado?.cicloEscolarId) === Number(cicloEscolarId);
 
-      return matchSearch && matchGrado && matchTurno && matchEstado;
-    });
+      return matchSearch && matchGrado && matchTurno && matchEstado && matchCiclo;
+    }).map(serializar);
   }
 
   findById(id) {
     const numericId = Number(id);
-    return this.grupos.find(g => g.id === numericId) || null;
+    return serializar(this.grupos.find(g => g.id === numericId) || null);
   }
 
   findByProfesorId(profesorId) {
     return this.grupos.filter(
       grupo => grupo.profesorId !== null &&
         String(grupo.profesorId) === String(profesorId)
-    );
+    ).map(serializar);
   }
 
   findByGradoAndLetra(gradoId, grupoLetra, excludeId = null) {
@@ -86,7 +101,7 @@ class GruposModel {
     };
 
     this.grupos.unshift(newGrupo);
-    return newGrupo;
+    return serializar(newGrupo);
   }
 
   update(id, data) {
@@ -116,7 +131,7 @@ class GruposModel {
       ...(data.estado !== undefined && { estado: data.estado }),
       ...(data.isBase !== undefined && { isBase: Boolean(data.isBase) })
     };
-    return this.grupos[index];
+    return serializar(this.grupos[index]);
   }
 
   delete(id) {
@@ -132,7 +147,7 @@ class GruposModel {
     const grupo = this.grupos.find(g => g.id === numericId);
     if (!grupo) return null;
     grupo.estado = grupo.estado === 'Activo' ? 'Inactivo' : 'Activo';
-    return grupo;
+    return serializar(grupo);
   }
 
   getMetrics() {

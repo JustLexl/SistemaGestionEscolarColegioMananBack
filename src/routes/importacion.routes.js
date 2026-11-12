@@ -130,9 +130,9 @@ const plantillas = {
   ],
 
   grados: [
-    'nombre',
     'nivel',
-    'ciclo'
+    'numeroGrado',
+    'cicloEscolarId'
   ],
 
   grupos: [

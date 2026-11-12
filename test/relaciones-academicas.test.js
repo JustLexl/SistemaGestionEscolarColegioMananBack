@@ -31,10 +31,19 @@ beforeEach(() => {
   );
 });
 
+function crearGradoPlaneacion(numeroGrado = 1) {
+  return gradosService.createGrado({
+    nivel: 'Secundaria',
+    numeroGrado,
+    cicloEscolarId: 3
+  });
+}
+
 describe('relaciones académicas de Grados, Grupos y Profesores', { concurrency: false }, () => {
   test('crea un grupo con un Profesor activo y guarda Profesor.id', () => {
+    const grado = crearGradoPlaneacion();
     const grupo = gruposService.createGrupo({
-      gradoId: '6',
+      gradoId: grado.id,
       grupoLetra: 'Z',
       clave: 'CM-PRI-6Z-26',
       aula: 'Aula Demo',
@@ -50,19 +59,21 @@ describe('relaciones académicas de Grados, Grupos y Profesores', { concurrency:
   });
 
   test('Profesor devuelve automáticamente el Grupo asignado', () => {
+    const grado = crearGradoPlaneacion();
     gruposService.createGrupo({
-      gradoId: '6',
+      gradoId: grado.id,
       grupoLetra: 'Z',
       clave: 'CM-PRI-6Z-26',
       profesorId: 3
     });
 
-    assert.ok(profesoresService.getProfesorById(3).grupos.includes('6° Z'));
+    assert.ok(profesoresService.getProfesorById(3).grupos.includes('1° Secundaria Z'));
   });
 
   test('reasignar un Grupo cambia la asignación entre Profesores', () => {
+    const grado = crearGradoPlaneacion();
     const grupo = gruposService.createGrupo({
-      gradoId: '6',
+      gradoId: grado.id,
       grupoLetra: 'Z',
       clave: 'CM-PRI-6Z-26',
       profesorId: 3
@@ -70,14 +81,15 @@ describe('relaciones académicas de Grados, Grupos y Profesores', { concurrency:
 
     gruposService.updateGrupo(grupo.id, { profesorId: 5 });
 
-    assert.equal(profesoresService.getProfesorById(3).grupos.includes('6° Z'), false);
-    assert.equal(profesoresService.getProfesorById(5).grupos.includes('6° Z'), true);
+    assert.equal(profesoresService.getProfesorById(3).grupos.includes('1° Secundaria Z'), false);
+    assert.equal(profesoresService.getProfesorById(5).grupos.includes('1° Secundaria Z'), true);
   });
 
   test('rechaza asignar un Profesor inactivo', () => {
+    const grado = crearGradoPlaneacion();
     assert.throws(
       () => gruposService.createGrupo({
-        gradoId: '6',
+        gradoId: grado.id,
         grupoLetra: 'Z',
         clave: 'CM-PRI-6Z-26',
         profesorId: 6
@@ -98,10 +110,17 @@ describe('relaciones académicas de Grados, Grupos y Profesores', { concurrency:
   });
 
   test('rechaza el mismo Grado y Grupo duplicado', () => {
+    const grado = crearGradoPlaneacion();
+    gruposService.createGrupo({
+      gradoId: grado.id,
+      grupoLetra: 'Z',
+      clave: 'CM-SEC-1Z-28',
+      profesorId: 3
+    });
     assert.throws(
       () => gruposService.createGrupo({
-        gradoId: '4',
-        grupoLetra: 'A',
+        gradoId: grado.id,
+        grupoLetra: 'Z',
         clave: 'CM-OTRA-CLAVE',
         profesorId: 3
       }),
@@ -110,9 +129,10 @@ describe('relaciones académicas de Grados, Grupos y Profesores', { concurrency:
   });
 
   test('rechaza una clave de Grupo duplicada', () => {
+    const grado = crearGradoPlaneacion();
     assert.throws(
       () => gruposService.createGrupo({
-        gradoId: '6',
+        gradoId: grado.id,
         grupoLetra: 'Z',
         clave: 'CM-PRI-4A-24',
         profesorId: 3
@@ -146,16 +166,16 @@ describe('relaciones académicas de Grados, Grupos y Profesores', { concurrency:
 
   test('crea y edita un Grado usando los campos soportados', () => {
     const creado = gradosService.createGrado({
-      nombre: '1° Secundaria',
       nivel: 'Secundaria',
-      ciclo: '2026–2027'
+      numeroGrado: 2,
+      cicloEscolarId: 3
     });
     const actualizado = gradosService.updateGrado(creado.id, {
-      nombre: 'Primero de Secundaria'
+      numeroGrado: 3
     });
 
-    assert.equal(actualizado.nombre, 'Primero de Secundaria');
+    assert.equal(actualizado.nombre, '3° Secundaria');
     assert.equal(actualizado.nivel, 'Secundaria');
-    assert.equal(actualizado.ciclo, '2026–2027');
+    assert.equal(actualizado.ciclo, '2027–2028');
   });
 });
