@@ -15,8 +15,27 @@ class AuthService {
     }
   }
 
-  buscarUsuarioPorCorreo(email) {
-    const usuario = rolesModel.findByCorreo(email);
+  async buscarUsuarioPorCorreo(email) {
+    let usuario = rolesModel.findByCorreo(email);
+
+    if (!usuario) {
+      try {
+        const { getDBStatus } = require('../config/database');
+        const { RolMongo } = require('../database/schemas');
+        if (getDBStatus().isConnected && RolMongo) {
+          const doc = await RolMongo.findOne({ correo: String(email).trim().toLowerCase() }).lean();
+          if (doc) {
+            const { _id, createdAt, updatedAt, __v, ...rest } = doc;
+            usuario = rest;
+            if (!rolesModel.roles.some(r => r.id === usuario.id)) {
+              rolesModel.roles.push(usuario);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[AuthService] Error buscando en Mongo directo:', err.message);
+      }
+    }
 
     if (!usuario) {
       const error = new Error('Credenciales incorrectas.');
@@ -81,7 +100,7 @@ class AuthService {
       throw error;
     }
 
-    const usuario = this.buscarUsuarioPorCorreo(email);
+    const usuario = await this.buscarUsuarioPorCorreo(email);
     this.validarEstadoUsuario(usuario);
 
     return {
@@ -93,7 +112,7 @@ class AuthService {
   async login(email, password) {
     this.validarCampos(email, password);
 
-    const usuario = this.buscarUsuarioPorCorreo(email);
+    const usuario = await this.buscarUsuarioPorCorreo(email);
 
     this.validarEstadoUsuario(usuario);
 
