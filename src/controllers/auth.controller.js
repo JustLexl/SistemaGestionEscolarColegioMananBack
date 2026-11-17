@@ -10,7 +10,7 @@ class AuthController {
       return res.status(200).json({
         success: true,
         message: 'Inicio de sesión correcto.',
-        token: resultado.firebaseUser.idToken,
+        token: resultado.token || resultado.firebaseUser?.idToken || ('token_' + Date.now()),
         usuario: {
           id: resultado.usuario.id,
           nombre: resultado.usuario.nombre,

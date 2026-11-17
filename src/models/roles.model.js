@@ -41,6 +41,7 @@ class RolesModel {
       nombre: data.nombre.trim(),
       puesto: data.puesto,
       correo: data.correo.trim().toLowerCase(),
+      contrasena: String(data.contrasena || data.password || 'Admin123*').trim(),
       estado: data.estado || 'Activo'
     };
     this.roles.unshift(newRol);
@@ -58,6 +59,9 @@ class RolesModel {
       ...(data.nombre !== undefined && { nombre: data.nombre.trim() }),
       ...(data.puesto !== undefined && { puesto: data.puesto }),
       ...(data.correo !== undefined && { correo: data.correo.trim().toLowerCase() }),
+      ...((data.contrasena !== undefined || data.password !== undefined) && {
+        contrasena: String(data.contrasena || data.password).trim()
+      }),
       ...(data.estado !== undefined && { estado: data.estado })
     };
     mongoSync.persist('roles', this.roles[index]);

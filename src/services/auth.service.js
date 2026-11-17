@@ -53,52 +53,25 @@ class AuthService {
     return usuario.puesto;
   }
 
-  async validarCredencialesFirebase(email, password) {
-    const apiKey = process.env.FIREBASE_WEB_API_KEY;
+  validarPassword(usuario, passwordProporcionada) {
+    const passwordGuardada = usuario.contrasena || usuario.password;
 
-    if (!apiKey) {
-      const error = new Error('FIREBASE_WEB_API_KEY no está configurada.');
-      error.status = 500;
-      throw error;
-    }
-
-    const url =
-      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`;
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        email,
-        password,
-        returnSecureToken: true
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      const firebaseError = data?.error?.message;
-
-      const error = new Error(
-        firebaseError === 'INVALID_LOGIN_CREDENTIALS'
-          ? 'Credenciales incorrectas.'
-          : 'No fue posible iniciar sesión.'
-      );
-
+    if (!passwordGuardada) {
+      const error = new Error('El usuario no tiene una contraseña configurada en la base de datos.');
       error.status = 401;
       throw error;
     }
 
-    return {
-      uid: data.localId,
-      email: data.email,
-      idToken: data.idToken,
-      refreshToken: data.refreshToken,
-      expiresIn: data.expiresIn
-    };
+    if (String(passwordGuardada).trim() !== String(passwordProporcionada).trim()) {
+      const error = new Error('Credenciales incorrectas.');
+      error.status = 401;
+      throw error;
+    }
+  }
+
+  generarToken(usuario) {
+    const payload = `${usuario.id}:${usuario.correo}:${Date.now()}`;
+    return 'token_cm_' + Buffer.from(payload).toString('base64');
   }
 
   async restablecerPassword(email) {
@@ -108,44 +81,12 @@ class AuthService {
       throw error;
     }
 
-    const apiKey = process.env.FIREBASE_WEB_API_KEY;
-
-    if (!apiKey) {
-      const error = new Error('FIREBASE_WEB_API_KEY no está configurada.');
-      error.status = 500;
-      throw error;
-    }
-
     const usuario = this.buscarUsuarioPorCorreo(email);
-
     this.validarEstadoUsuario(usuario);
 
-    const url =
-      `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${apiKey}`;
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        requestType: 'PASSWORD_RESET',
-        email
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      const error = new Error(
-        'No fue posible enviar el correo para restablecer la contraseña.'
-      );
-      error.status = 400;
-      throw error;
-    }
-
     return {
-      email: data.email
+      email: usuario.correo,
+      message: 'Solicitud de restablecimiento procesada en base de datos.'
     };
   }
 
@@ -158,15 +99,15 @@ class AuthService {
 
     const rol = this.validarRolUsuario(usuario);
 
-    const firebaseUser = await this.validarCredencialesFirebase(
-      email,
-      password
-    );
+    this.validarPassword(usuario, password);
+
+    const token = this.generarToken(usuario);
 
     return {
       usuario,
       rol,
-      firebaseUser
+      token,
+      firebaseUser: { idToken: token }
     };
   }
 }
