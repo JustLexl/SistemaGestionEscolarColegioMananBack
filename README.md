@@ -22,7 +22,7 @@ El backend se encuentra conectado a la base de datos MongoDB Atlas con soporte d
 
 - **Cadena de Conexión:**
   ```env
-  MONGODB_URI=mongodb+srv://admin123:admin123@colegiomanantial.d73mxbv.mongodb.net/colegiomanantial?retryWrites=true&w=majority
+  MONGODB_URI=mongodb+srv://<usuario>:<password>@colegiomanantial.d73mxbv.mongodb.net/colegiomanantial?retryWrites=true&w=majority
   ```
 - **Base de Datos:** `colegiomanantial`
 - **Colecciones Sembradas:** `roles`, `profesores`, `ciclos_escolares`, `grados`, `grupos`, `materias`, `alumnos`, `asistencias`, `calificaciones`.
@@ -67,7 +67,7 @@ Asegúrate de tener el archivo `.env` configurado:
 ```env
 PORT=3002
 NODE_ENV=development
-MONGODB_URI=mongodb+srv://admin123:admin123@colegiomanantial.d73mxbv.mongodb.net/colegiomanantial?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://<usuario>:<password>@colegiomanantial.d73mxbv.mongodb.net/colegiomanantial?retryWrites=true&w=majority
 FRONTEND_URL=http://localhost:4200,http://localhost:3000,http://localhost:5173
 ```
 

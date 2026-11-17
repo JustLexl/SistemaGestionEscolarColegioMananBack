@@ -1,3 +1,4 @@
+require('dotenv').config();
 const dns = require('dns');
 try {
   dns.setServers(['8.8.8.8', '1.1.1.1']);
@@ -7,10 +8,15 @@ try {
 
 const mongoose = require('mongoose');
 
-const uri = process.env.MONGODB_URI || 'mongodb+srv://admin123:admin123@colegiomanantial.d73mxbv.mongodb.net/colegiomanantial?retryWrites=true&w=majority';
+const uri = process.env.MONGODB_URI;
 
 async function testConnection() {
-  console.log('Intentando conectar a MongoDB Atlas con SRV y DNS 8.8.8.8...');
+  if (!uri) {
+    console.error('❌ MONGODB_URI no está definido en las variables de entorno (.env).');
+    process.exit(1);
+  }
+
+  console.log('Intentando conectar a MongoDB Atlas...');
   try {
     await mongoose.connect(uri, { serverSelectionTimeoutMS: 10000 });
     console.log('✅ Conexión exitosa a MongoDB Atlas!');

@@ -10,10 +10,13 @@ try {
 
 let isConnected = false;
 
-const defaultUri = 'mongodb+srv://admin123:admin123@colegiomanantial.d73mxbv.mongodb.net/colegiomanantial?retryWrites=true&w=majority';
-
 async function connectDB(customUri) {
-  const uri = customUri || process.env.MONGODB_URI || defaultUri;
+  const uri = customUri || process.env.MONGODB_URI;
+
+  if (!uri) {
+    console.warn('[Database] MONGODB_URI no está definido. Omitiendo conexión a base de datos.');
+    return null;
+  }
 
   if (isConnected && mongoose.connection.readyState === 1) {
     return mongoose.connection;
@@ -32,7 +35,6 @@ async function connectDB(customUri) {
   } catch (error) {
     console.error(`[Database] Error conectando a MongoDB: ${error.message}`);
     isConnected = false;
-    // No detenemos el servidor para permitir fallback / pruebas offline
     return null;
   }
 }
@@ -68,4 +70,3 @@ module.exports = {
   disconnectDB,
   getDBStatus,
 };
-
