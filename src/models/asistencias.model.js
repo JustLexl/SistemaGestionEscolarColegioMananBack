@@ -1,4 +1,5 @@
 const initialAsistencias = require('../data/asistencias.seed');
+const mongoSync = require('../database/mongoSync.service');
 
 class AsistenciasModel {
   constructor() {
@@ -38,6 +39,7 @@ class AsistenciasModel {
     };
 
     this.asistencias.push(nuevaAsistencia);
+    mongoSync.persist('asistencias', nuevaAsistencia);
     return nuevaAsistencia;
   }
 
@@ -56,6 +58,7 @@ class AsistenciasModel {
       asistencia.estado = data.estado;
     }
 
+    mongoSync.persist('asistencias', asistencia);
     return asistencia;
   }
 
@@ -69,6 +72,7 @@ class AsistenciasModel {
     }
 
     const [eliminada] = this.asistencias.splice(index, 1);
+    mongoSync.remove('asistencias', Number(id));
     return eliminada;
   }
 }
