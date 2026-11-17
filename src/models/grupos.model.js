@@ -1,5 +1,6 @@
 const initialGrupos = require('../data/grupos.seed');
 const gradosModel = require('./grados.model');
+const mongoSync = require('../database/mongoSync.service');
 
 function serializar(grupo) {
   if (!grupo) return null;
@@ -101,6 +102,7 @@ class GruposModel {
     };
 
     this.grupos.unshift(newGrupo);
+    mongoSync.persist('grupos', newGrupo);
     return serializar(newGrupo);
   }
 
@@ -131,6 +133,7 @@ class GruposModel {
       ...(data.estado !== undefined && { estado: data.estado }),
       ...(data.isBase !== undefined && { isBase: Boolean(data.isBase) })
     };
+    mongoSync.persist('grupos', this.grupos[index]);
     return serializar(this.grupos[index]);
   }
 
@@ -139,6 +142,7 @@ class GruposModel {
     const index = this.grupos.findIndex(g => g.id === numericId);
     if (index === -1) return false;
     this.grupos.splice(index, 1);
+    mongoSync.remove('grupos', numericId);
     return true;
   }
 
@@ -147,6 +151,7 @@ class GruposModel {
     const grupo = this.grupos.find(g => g.id === numericId);
     if (!grupo) return null;
     grupo.estado = grupo.estado === 'Activo' ? 'Inactivo' : 'Activo';
+    mongoSync.persist('grupos', grupo);
     return serializar(grupo);
   }
 

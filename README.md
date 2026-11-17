@@ -1,161 +1,111 @@
-# Sistema de Gestión Escolar - Colegio Manantial (Backend API)
+ada# Sistema de Gestión Escolar - Colegio Manantial (Backend API)
 
-API RESTful desarrollada con **Node.js** y **Express 5** para el Sistema de Gestión Escolar del Colegio Manantial.
+API RESTful desarrollada con **Node.js**, **Express 5** y **MongoDB Atlas** para el Sistema de Gestión Escolar del Colegio Manantial.
 
-Este proyecto implementa la lógica, almacenamiento de datos, validaciones y endpoints para los siguientes 4 módulos principales:
-- **Materias** (Catálogo de asignaturas, claves SEP, carga horaria, asignación a grupos y docentes)
-- **Grados** (1° a 6° de Primaria)
-- **Grupos** (Aulas, turnos, cupos, profesores asignados, estado)
+Este proyecto implementa la lógica, almacenamiento de datos, validaciones y endpoints para los siguientes módulos principales:
 - **Roles y Usuarios** (Administrativo, Directivos, Profesores con correo y estado)
-- **Importación de Datos** (Carga de alumnos, profesores, grados, grupos y materias mediante archivos CSV y Excel, con validación y confirmación de registros)
+- **Ciclos Escolares** (Planeación, Activo, Finalizado calculados por vigencia de fechas)
+- **Grados** (1° a 6° de Primaria, 1° a 3° de Secundaria)
+- **Grupos** (Aulas, turnos, cupos, profesores asignados, estado)
+- **Materias** (Catálogo de asignaturas, claves SEP, carga horaria, asignación a grupos y docentes)
+- **Profesores** (Cédula profesional, asignaciones académicas)
+- **Alumnos** (Matrícula, tutor, inscripción vinculada a grupo escolar)
+- **Asistencias** (Registro por alumno, fecha y estado)
+- **Calificaciones** (Registro por alumno, materia, periodo y nota)
+- **Importación de Datos** (Carga de alumnos, profesores, grados, grupos, materias y asistencias mediante archivos CSV y Excel, con validación y confirmación de registros)
+
+---
+
+## 🍃 Conexión a Base de Datos MongoDB Atlas
+
+El backend se encuentra conectado a la base de datos MongoDB Atlas con soporte de persistencia y sincronización automática.
+
+- **Cadena de Conexión:**
+  ```env
+  MONGODB_URI=mongodb+srv://admin123:admin123@colegiomanantial.d73mxbv.mongodb.net/colegiomanantial?retryWrites=true&w=majority
+  ```
+- **Base de Datos:** `colegiomanantial`
+- **Colecciones Sembradas:** `roles`, `profesores`, `ciclos_escolares`, `grados`, `grupos`, `materias`, `alumnos`, `asistencias`, `calificaciones`.
 
 ---
 
 ## 📁 Estructura del Proyecto
 
 ```
-SistemaColegioManantialBack/
-├── package.json               # Configuración y dependencias (Express, Cors)
-├── index.js                   # Punto de entrada del servidor Express
+BackColegioManantial/
+├── .env                       # Variables de entorno locales (Puerto 3002, URI Mongo)
+├── .env.example               # Plantilla de variables de entorno
+├── package.json               # Configuración y scripts
+├── index.js                   # Punto de entrada del servidor Express con conexión a Mongo
 ├── database/
-│   └── schema.sql             # Esquema SQL relacional (Tablas DDL + Datos Semilla)
+│   └── schema.sql             # Esquema relacional DDL de referencia
+├── scripts/
+│   ├── test-mongo-connection.js # Prueba de conexión directa a MongoDB Atlas
+│   ├── seed-mongo.js          # Sembrador de colecciones en MongoDB Atlas
+│   ├── validar-local-cruds.js # Sub-escenario de pruebas E2E para todos los CRUDs y CORS
+│   └── validar-demo2*-e2e.js  # Scripts de validación de demos de integración
 └── src/
-    ├── data/                  # Semillas de datos iniciales alineadas con el Frontend
-    │   ├── roles.seed.js
-    │   ├── grados.seed.js
-    │   ├── grupos.seed.js
-    │   └── materias.seed.js
-    ├── models/                # Capa de datos y persistencia en memoria (CRUD)
-    │   ├── roles.model.js
-    │   ├── grados.model.js
-    │   ├── grupos.model.js
-    │   └── materias.model.js
-    ├── services/              # Capa de reglas de negocio y validación
-    │   ├── roles.service.js
-    │   ├── grados.service.js
-    │   ├── grupos.service.js
-    │   ├── importacion.service.js  #Validaciones de registros
-    │   └── materias.service.js
-    ├── controllers/           # Controladores HTTP (Req, Res, Códigos de estado)
-    │   ├── roles.controller.js
-    │   ├── grados.controller.js
-    │   ├── grupos.controller.js
-    │   ├── importacion.controller.js
-    │   └── materias.controller.js
-    └── routes/                # Definición de rutas y endpoints REST
-    │    ├── index.js           # Enrutador central (/api)
-    │    ├── roles.routes.js    # /api/roles
-    │    ├── grados.routes.js   # /api/grados
-    │    ├── grupos.routes.js   # /api/grupos
-    │    ├── importacion.routes.js  # /api/importacion
-    │    └── materias.routes.js # /api/materias
-    └── utils/                  # Procesar archivos
-          ├── excel.parser.js   # Lectura de archivo CVS y Excel
+    ├── config/
+    │   └── database.js        # Módulo de conexión a MongoDB Atlas (con DNS fallback)
+    ├── database/
+    │   ├── schemas/           # Modelos y esquemas de Mongoose
+    │   └── mongoSync.service.js # Servicio de sincronización y persistencia
+    ├── data/                  # Semillas de datos iniciales
+    ├── models/                # Capa de datos y persistencia sincronizada
+    ├── services/              # Reglas de negocio y validación académica
+    ├── controllers/           # Controladores HTTP
+    ├── routes/                # Rutas REST (/api)
+    └── utils/                 # Parsers Excel/CSV y cálculo de ciclos escolares
 ```
 
 ---
 
-## 🚀 Cómo ejecutar el servidor
+## 🚀 Cómo ejecutar y probar el servidor
 
-### 1. Instalar dependencias
-```bash
-npm install
+### 1. Variables de Entorno (`.env`)
+Asegúrate de tener el archivo `.env` configurado:
+```env
+PORT=3002
+NODE_ENV=development
+MONGODB_URI=mongodb+srv://admin123:admin123@colegiomanantial.d73mxbv.mongodb.net/colegiomanantial?retryWrites=true&w=majority
+FRONTEND_URL=http://localhost:4200,http://localhost:3000,http://localhost:5173
 ```
-Importante: Se agregaron las dependencias `multer` y `xlsx` para el módulo de importación de datos. Si ya tenías instalado el proyecto anteriormente, ejecuta nuevamente `npm install` para instalar las nuevas dependencias y evitar errores al iniciar el servidor.
 
-### 2. Modo Desarrollo (con autorecarga en Node 18+)
+### 2. Probar la Conexión a MongoDB Atlas
+```bash
+npm run db:test
+```
+
+### 3. Limpiar Base de Datos (0 documentos)
+```bash
+npm run db:clean
+```
+
+### 4. Ejecutar el Sub-Escenario de Pruebas Locales (Todos los CRUDs)
+Ejecuta la suite integral que levanta el servidor, valida la conexión a MongoDB Atlas, ejecuta las operaciones CRUD completas y verifica las cabeceras CORS para el Frontend:
+```bash
+npm run test:local
+```
+
+### 5. Iniciar Servidor en Desarrollo
 ```bash
 npm run dev
 ```
 
-### 3. Modo Producción
-```bash
-npm start
-```
-
-El servidor iniciará por defecto en `http://localhost:3000`.
+El servidor iniciará en `http://localhost:3002`.
 
 ---
 
-## 📋 Endpoints Disponibles
+## 🔗 Conexión con el Frontend (Angular / React)
 
-### Base & Health Check
-- `GET /` - Información general de la API
-- `GET /api/health` - Estado de salud del servicio
-
----
-
-### 1. Módulo: Roles (`/api/roles`)
-| Método | Endpoint | Descripción |
-| :--- | :--- | :--- |
-| `GET` | `/api/roles` | Lista roles con filtros (`?search=`, `?estado=`, `?puesto=`) |
-| `GET` | `/api/roles/metrics` | Métricas KPI (Total, Activos, Inactivos) |
-| `GET` | `/api/roles/:id` | Detalle de un rol por ID |
-| `POST` | `/api/roles` | Registrar nuevo usuario/rol |
-| `PUT` | `/api/roles/:id` | Actualizar rol existente |
-| `DELETE` | `/api/roles/:id` | Eliminar rol por ID |
-| `PATCH` | `/api/roles/:id/toggle-estado` | Alternar estado entre 'Activo' e 'Inactivo' |
-
----
-
-### 2. Módulo: Grados (`/api/grados`)
-| Método | Endpoint | Descripción |
-| :--- | :--- | :--- |
-| `GET` | `/api/grados` | Listar todos los grados (`?nivel=`, `?ciclo=`) |
-| `GET` | `/api/grados/:id` | Detalle de un grado por ID |
-| `POST` | `/api/grados` | Crear nuevo grado escolar |
-| `PUT` | `/api/grados/:id` | Actualizar grado existente |
-| `DELETE` | `/api/grados/:id` | Eliminar grado |
-
----
-
-### 3. Módulo: Grupos (`/api/grupos`)
-| Método | Endpoint | Descripción |
-| :--- | :--- | :--- |
-| `GET` | `/api/grupos` | Listar grupos con filtros (`?search=`, `?gradoId=`, `?turno=`, `?estado=`) |
-| `GET` | `/api/grupos/metrics` | Métricas KPI (Total, Activos, Grados, Aulas, Matrícula total, Promedio) |
-| `GET` | `/api/grupos/:id` | Detalle de un grupo por ID |
-| `POST` | `/api/grupos` | Registrar nuevo grupo escolar |
-| `PUT` | `/api/grupos/:id` | Actualizar datos del grupo |
-| `DELETE` | `/api/grupos/:id` | Eliminar grupo por ID |
-| `PATCH` | `/api/grupos/:id/toggle-estado` | Alternar estado (Activo / Inactivo) |
-
----
-
-### 4. Módulo: Materias (`/api/materias`)
-| Método | Endpoint | Descripción |
-| :--- | :--- | :--- |
-| `GET` | `/api/materias` | Listar materias (`?search=`, `?gradoId=`, `?grupo=`, `?estado=`) |
-| `GET` | `/api/materias/metrics` | Métricas KPI (Total, Activas, En planeación, Inactivas, Alumnos impactados) |
-| `GET` | `/api/materias/:id` | Detalle de una materia por ID |
-| `POST` | `/api/materias` | Registrar nueva materia en el catálogo |
-| `PUT` | `/api/materias/:id` | Actualizar datos de la materia |
-| `DELETE` | `/api/materias/:id` | Eliminar materia por ID |
-| `PATCH` | `/api/materias/:id/dar-de-baja` | Cambiar estado a 'Inactiva' (baja del plan) |
-
----
-
-### 5. Módulo: Importación de Datos (`/api/importacion`)
-| Método | Endpoint | Descripción |
-| :--- | :--- | :--- |
-| `GET` | `/api/importacion/:entidad/plantilla` | Descargar plantilla CSV (Alumnos, Profesores, Grados, Grupos y Materias) |
-| `POST` | `/api/importacion/alumnos/validar` | Validar archivo CSV/XLSX de alumnos |
-| `POST` | `/api/importacion/alumnos/confirmar` | Registrar alumnos válidos |
-| `POST` | `/api/importacion/profesores/validar` | Validar archivo CSV/XLSX de profesores |
-| `POST` | `/api/importacion/profesores/confirmar` | Registrar profesores válidos |
-| `POST` | `/api/importacion/grados/validar` | Validar archivo CSV/XLSX de grados |
-| `POST` | `/api/importacion/grados/confirmar` | Registrar grados válidos |
-| `POST` | `/api/importacion/grupos/validar` | Validar archivo CSV/XLSX de grupos |
-| `POST` | `/api/importacion/grupos/confirmar` | Registrar grupos válidos |
-| `POST` | `/api/importacion/materias/validar` | Validar archivo CSV/XLSX de materias |
-| `POST` | `/api/importacion/materias/confirmar` | Registrar materias válidas |
-
----
-
-## 🗄️ Base de Datos Relacional (SQL)
-
-Se incluye el archivo [`database/schema.sql`](file:///c:/Users/alexa/Documents/SistemaColegioManantialBack/database/schema.sql) con:
-- Definición de tablas DDL (`roles`, `grados`, `grupos`, `materias`, `materia_grupos`).
-- Índices de optimización y llaves foráneas (`FOREIGN KEY`).
-- Sentencias `INSERT` con los datos semilla reales del colegio.
-- Compatible con **MySQL 8+**, **MariaDB** y adaptable a **PostgreSQL** o **SQLite**.
+1. **Puerto:** El backend corre en el puerto **`3002`** (`http://localhost:3002/api`), alineado exactamente con la configuración del frontend en `FrontColegioManantial/src/app/core/api/api-base-url.ts`:
+   ```typescript
+   export const API_BASE_URL = 'http://localhost:3002/api';
+   ```
+2. **CORS:** Configurado para aceptar peticiones desde cualquier origen local:
+   - Angular (`http://localhost:4200`)
+   - React Vite (`http://localhost:5173`)
+   - React Create React App / Next.js (`http://localhost:3000`)
+3. **Health Check & Estado de BD:**
+   - `GET http://localhost:3002/api/health`
+   - `GET http://localhost:3002/api/db/status`

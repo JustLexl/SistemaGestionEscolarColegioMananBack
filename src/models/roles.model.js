@@ -1,4 +1,5 @@
 const initialRoles = require('../data/roles.seed');
+const mongoSync = require('../database/mongoSync.service');
 
 /**
  * Modelo de Datos para la tabla / entidad Roles.
@@ -43,6 +44,7 @@ class RolesModel {
       estado: data.estado || 'Activo'
     };
     this.roles.unshift(newRol);
+    mongoSync.persist('roles', newRol);
     return newRol;
   }
 
@@ -58,6 +60,7 @@ class RolesModel {
       ...(data.correo !== undefined && { correo: data.correo.trim().toLowerCase() }),
       ...(data.estado !== undefined && { estado: data.estado })
     };
+    mongoSync.persist('roles', this.roles[index]);
     return this.roles[index];
   }
 
@@ -66,6 +69,7 @@ class RolesModel {
     const index = this.roles.findIndex(r => r.id === numericId);
     if (index === -1) return false;
     this.roles.splice(index, 1);
+    mongoSync.remove('roles', numericId);
     return true;
   }
 
@@ -74,6 +78,7 @@ class RolesModel {
     const rol = this.roles.find(r => r.id === numericId);
     if (!rol) return null;
     rol.estado = rol.estado === 'Activo' ? 'Inactivo' : 'Activo';
+    mongoSync.persist('roles', rol);
     return rol;
   }
 

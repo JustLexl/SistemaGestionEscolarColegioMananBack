@@ -1,4 +1,5 @@
 const initialCalificaciones = require('../data/calificaciones.seed');
+const mongoSync = require('../database/mongoSync.service');
 
 function normalize(value) {
   return String(value || '').trim().toLocaleLowerCase('es-MX');
@@ -61,6 +62,7 @@ class CalificacionesModel {
     };
 
     this.calificaciones.push(newCalificacion);
+    mongoSync.persist('calificaciones', newCalificacion);
     return newCalificacion;
   }
 
@@ -76,6 +78,7 @@ class CalificacionesModel {
       ...data
     };
 
+    mongoSync.persist('calificaciones', this.calificaciones[index]);
     return this.calificaciones[index];
   }
 
@@ -87,6 +90,7 @@ class CalificacionesModel {
     if (index === -1) return false;
 
     this.calificaciones.splice(index, 1);
+    mongoSync.remove('calificaciones', id);
     return true;
   }
 }

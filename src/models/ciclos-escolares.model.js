@@ -1,5 +1,6 @@
 const initialCiclos = require('../data/ciclos-escolares.seed');
 const { determinarEstadoCiclo } = require('../utils/ciclo-escolar');
+const mongoSync = require('../database/mongoSync.service');
 
 function serializar(ciclo) {
   if (!ciclo) return null;
@@ -32,6 +33,7 @@ class CiclosEscolaresModel {
     const id = this.ciclos.reduce((max, ciclo) => Math.max(max, ciclo.id), 0) + 1;
     const ciclo = { id, ...data };
     this.ciclos.push(ciclo);
+    mongoSync.persist('ciclos_escolares', ciclo);
     return serializar(ciclo);
   }
 
@@ -39,6 +41,7 @@ class CiclosEscolaresModel {
     const index = this.ciclos.findIndex(ciclo => ciclo.id === Number(id));
     if (index === -1) return null;
     this.ciclos[index] = { ...this.ciclos[index], ...data, id: Number(id) };
+    mongoSync.persist('ciclos_escolares', this.ciclos[index]);
     return serializar(this.ciclos[index]);
   }
 }

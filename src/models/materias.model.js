@@ -1,4 +1,5 @@
 const initialMaterias = require('../data/materias.seed');
+const mongoSync = require('../database/mongoSync.service');
 
 class MateriasModel {
   constructor() {
@@ -34,6 +35,7 @@ class MateriasModel {
     const id = this.materias.reduce((max, materia) => Math.max(max, materia.id), 0) + 1;
     const materia = { id, ...data, grupoIds: [...data.grupoIds] };
     this.materias.unshift(materia);
+    mongoSync.persist('materias', materia);
     return materia;
   }
 
@@ -46,6 +48,7 @@ class MateriasModel {
       id: Number(id),
       grupoIds: data.grupoIds ? [...data.grupoIds] : this.materias[index].grupoIds
     };
+    mongoSync.persist('materias', this.materias[index]);
     return this.materias[index];
   }
 
@@ -53,6 +56,7 @@ class MateriasModel {
     const index = this.materias.findIndex(materia => materia.id === Number(id));
     if (index === -1) return false;
     this.materias.splice(index, 1);
+    mongoSync.remove('materias', Number(id));
     return true;
   }
 
@@ -60,6 +64,7 @@ class MateriasModel {
     const materia = this.findById(id);
     if (!materia) return null;
     materia.estado = 'Inactiva';
+    mongoSync.persist('materias', materia);
     return materia;
   }
 }

@@ -1,4 +1,5 @@
 const initialProfesores = require('../data/profesores.seed');
+const mongoSync = require('../database/mongoSync.service');
 
 class ProfesoresModel {
   constructor() {
@@ -60,6 +61,7 @@ class ProfesoresModel {
     };
 
     this.profesores.unshift(newProfesor);
+    mongoSync.persist('profesores', newProfesor);
     return newProfesor;
   }
 
@@ -74,6 +76,7 @@ class ProfesoresModel {
       nombre: data.nombre.trim(),
       cedula: data.cedula.trim()
     };
+    mongoSync.persist('profesores', this.profesores[index]);
     return this.profesores[index];
   }
 
@@ -81,6 +84,7 @@ class ProfesoresModel {
     const profesor = this.findById(id);
     if (!profesor) return null;
     profesor.estado = estado;
+    mongoSync.persist('profesores', profesor);
     return profesor;
   }
 
@@ -94,6 +98,7 @@ class ProfesoresModel {
     );
     if (index === -1) return false;
     this.profesores.splice(index, 1);
+    mongoSync.remove('profesores', Number(id));
     return true;
   }
 }

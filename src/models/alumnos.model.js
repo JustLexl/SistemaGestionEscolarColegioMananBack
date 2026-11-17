@@ -1,5 +1,6 @@
 const initialAlumnos = require('../data/alumnos.seed');
 const gruposModel = require('./grupos.model');
+const mongoSync = require('../database/mongoSync.service');
 
 function normalizar(valor) {
   return String(valor ?? '').trim().toLocaleLowerCase('es-MX');
@@ -97,6 +98,7 @@ class AlumnosModel {
     };
 
     this.alumnos.push(newAlumno);
+    mongoSync.persist('alumnos', newAlumno);
     return serializar(newAlumno);
   }
 
@@ -129,6 +131,7 @@ class AlumnosModel {
       })
     };
 
+    mongoSync.persist('alumnos', this.alumnos[index]);
     return serializar(this.alumnos[index]);
   }
 
@@ -140,6 +143,7 @@ class AlumnosModel {
     if (index === -1) return false;
 
     this.alumnos.splice(index, 1);
+    mongoSync.remove('alumnos', Number(id));
     return true;
   }
 }

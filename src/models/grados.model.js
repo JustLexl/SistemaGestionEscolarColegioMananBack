@@ -1,5 +1,6 @@
 const initialGrados = require('../data/grados.seed');
 const ciclosModel = require('./ciclos-escolares.model');
+const mongoSync = require('../database/mongoSync.service');
 
 function serializar(grado) {
   if (!grado) return null;
@@ -44,6 +45,7 @@ class GradosModel {
     ) + 1).toString();
     const newGrado = { id: nextId, ...data };
     this.grados.push(newGrado);
+    mongoSync.persist('grados', newGrado);
     return serializar(newGrado);
   }
 
@@ -51,6 +53,7 @@ class GradosModel {
     const index = this.grados.findIndex(grado => String(grado.id) === String(id));
     if (index === -1) return null;
     this.grados[index] = { ...this.grados[index], ...data, id: String(id) };
+    mongoSync.persist('grados', this.grados[index]);
     return serializar(this.grados[index]);
   }
 
@@ -58,6 +61,7 @@ class GradosModel {
     const index = this.grados.findIndex(grado => String(grado.id) === String(id));
     if (index === -1) return false;
     this.grados.splice(index, 1);
+    mongoSync.remove('grados', id);
     return true;
   }
 }

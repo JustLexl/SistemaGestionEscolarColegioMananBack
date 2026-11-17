@@ -3,12 +3,18 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const apiRoutes = require('./src/routes');
+const { connectDB } = require('./src/config/database');
+const mongoSync = require('./src/database/mongoSync.service');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3002;
 
 // Configuración de Middlewares
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -26,11 +32,18 @@ app.get('/', (req, res) => {
     status: 'online',
     endpoints: {
       health: '/api/health',
+      dbStatus: '/api/db/status',
       roles: '/api/roles',
       ciclosEscolares: '/api/ciclos-escolares',
       grados: '/api/grados',
       grupos: '/api/grupos',
-      materias: '/api/materias'
+      materias: '/api/materias',
+      profesores: '/api/profesores',
+      alumnos: '/api/alumnos',
+      asistencias: '/api/asistencias',
+      calificaciones: '/api/calificaciones',
+      auth: '/api/auth',
+      importacion: '/api/importacion'
     }
   });
 });
@@ -58,18 +71,54 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Iniciar servidor
-app.listen(PORT, () => {
-  console.log(`====================================================`);
-  console.log(` Servidor Colegio Manantial corriendo en puerto ${PORT}`);
-  console.log(` Base URL: http://localhost:${PORT}`);
-  console.log(` Health:   http://localhost:${PORT}/api/health`);
-  console.log(` Roles:    http://localhost:${PORT}/api/roles`);
-  console.log(` Ciclos:   http://localhost:${PORT}/api/ciclos-escolares`);
-  console.log(` Grados:   http://localhost:${PORT}/api/grados`);
-  console.log(` Grupos:   http://localhost:${PORT}/api/grupos`);
-  console.log(` Materias: http://localhost:${PORT}/api/materias`);
-  console.log(`====================================================`);
-});
+// Conectar a MongoDB Atlas e iniciar servidor
+async function startServer() {
+  if (process.env.NODE_ENV !== 'test') {
+    try {
+      await connectDB();
+      const rolesModel = require('./src/models/roles.model');
+      const profesoresModel = require('./src/models/profesores.model');
+      const ciclosModel = require('./src/models/ciclos-escolares.model');
+      const gradosModel = require('./src/models/grados.model');
+      const gruposModel = require('./src/models/grupos.model');
+      const materiasModel = require('./src/models/materias.model');
+      const alumnosModel = require('./src/models/alumnos.model');
+      const asistenciasModel = require('./src/models/asistencias.model');
+      const calificacionesModel = require('./src/models/calificaciones.model');
+
+      await mongoSync.hydrateModels({
+        rolesModel,
+        profesoresModel,
+        ciclosModel,
+        gradosModel,
+        gruposModel,
+        materiasModel,
+        alumnosModel,
+        asistenciasModel,
+        calificacionesModel,
+      });
+    } catch (e) {
+      console.warn('[Server] MongoDB inicialización diferida:', e.message);
+    }
+  }
+
+  const server = app.listen(PORT, () => {
+    console.log(`====================================================`);
+    console.log(` Servidor Colegio Manantial corriendo en puerto ${PORT}`);
+    console.log(` Base URL: http://localhost:${PORT}`);
+    console.log(` Health:   http://localhost:${PORT}/api/health`);
+    console.log(` DB Info:  http://localhost:${PORT}/api/db/status`);
+    console.log(` Roles:    http://localhost:${PORT}/api/roles`);
+    console.log(` Ciclos:   http://localhost:${PORT}/api/ciclos-escolares`);
+    console.log(` Grados:   http://localhost:${PORT}/api/grados`);
+    console.log(` Grupos:   http://localhost:${PORT}/api/grupos`);
+    console.log(` Materias: http://localhost:${PORT}/api/materias`);
+    console.log(`====================================================`);
+  });
+
+  return server;
+}
+
+startServer();
 
 module.exports = app;
