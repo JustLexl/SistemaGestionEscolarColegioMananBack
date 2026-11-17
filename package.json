@@ -14,7 +14,8 @@
     "test:e2e:demo2.5": "node scripts/validar-demo2.5-e2e.js",
     "db:test": "node scripts/test-mongo-connection.js",
     "db:seed": "node scripts/seed-mongo.js",
-    "db:clean": "node scripts/clean-mongo.js"
+    "db:clean": "node scripts/clean-mongo.js",
+    "db:admin": "node scripts/crear-admin.js"
   },
   "keywords": [
     "colegio-manantial",
