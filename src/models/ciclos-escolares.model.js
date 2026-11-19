@@ -44,6 +44,14 @@ class CiclosEscolaresModel {
     mongoSync.persist('ciclos_escolares', this.ciclos[index]);
     return serializar(this.ciclos[index]);
   }
+
+  delete(id) {
+    const index = this.ciclos.findIndex(ciclo => String(ciclo.id) === String(id));
+    if (index === -1) return false;
+    this.ciclos.splice(index, 1);
+    mongoSync.remove('ciclos_escolares', Number(id));
+    return true;
+  }
 }
 
 module.exports = new CiclosEscolaresModel();

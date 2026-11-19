@@ -54,7 +54,7 @@ class ProfesoresModel {
 
     const newProfesor = {
       id: nextId,
-      usuarioId: Number(data.usuarioId),
+      usuarioId: data.usuarioId ? Number(data.usuarioId) : null,
       nombre: data.nombre.trim(),
       cedula: data.cedula.trim(),
       estado: data.estado || 'Activo'
@@ -73,8 +73,9 @@ class ProfesoresModel {
 
     this.profesores[index] = {
       ...this.profesores[index],
-      nombre: data.nombre.trim(),
-      cedula: data.cedula.trim()
+      ...(data.nombre !== undefined && { nombre: data.nombre.trim() }),
+      ...(data.cedula !== undefined && { cedula: data.cedula.trim() }),
+      ...(data.estado !== undefined && { estado: data.estado })
     };
     mongoSync.persist('profesores', this.profesores[index]);
     return this.profesores[index];

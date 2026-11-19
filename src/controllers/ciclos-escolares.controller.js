@@ -43,6 +43,18 @@ class CiclosEscolaresController {
       next(error);
     }
   }
+
+  delete(req, res, next) {
+    try {
+      ciclosService.delete(req.params.id);
+      res.status(200).json({
+        success: true,
+        message: `Ciclo escolar con ID ${req.params.id} eliminado correctamente`
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new CiclosEscolaresController();

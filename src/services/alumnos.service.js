@@ -117,14 +117,6 @@ class AlumnosService {
       throw error;
     }
 
-    if (grupo.cicloEscolar.estado !== 'Activo') {
-      const error = new Error(
-        'Solo se permiten inscripciones en el ciclo escolar Activo. Preinscripción para ciclos en planeación queda fuera del alcance de Demo 2.3.'
-      );
-      error.statusCode = 409;
-      throw error;
-    }
-
     return grupo;
   }
 
@@ -152,29 +144,7 @@ class AlumnosService {
         existing.fechaNacimiento === '' && updatedData.fechaNacimiento === ''
     });
 
-    const cambioGrupo = data.grupoId !== undefined &&
-      Number(data.grupoId) !== Number(existing.grupoId);
-
-    if (cambioGrupo) {
-      const grupoActual = this.obtenerGrupoValido(existing.grupoId);
-
-      if (grupoActual.cicloEscolar.estado !== 'Activo') {
-        const error = new Error(
-          'Este registro pertenece a un ciclo escolar finalizado. La asignación académica se conserva como historial.'
-        );
-        error.statusCode = 409;
-        throw error;
-      }
-
-      const grupoNuevo = this.validarGrupoParaNuevaInscripcion(data.grupoId);
-      if (grupoNuevo.cicloEscolar.id !== grupoActual.cicloEscolar.id) {
-        const error = new Error(
-          'La reasignación solo puede realizarse entre grupos del mismo ciclo escolar Activo.'
-        );
-        error.statusCode = 409;
-        throw error;
-      }
-    } else if (data.grupoId !== undefined) {
+    if (data.grupoId !== undefined) {
       this.obtenerGrupoValido(data.grupoId);
     }
 

@@ -8,5 +8,6 @@ router.get('/:id', profesoresController.getById);
 router.post('/', profesoresController.create);
 router.put('/:id', profesoresController.update);
 router.patch('/:id/dar-de-baja', profesoresController.darDeBaja);
+router.delete('/:id', profesoresController.delete);
 
 module.exports = router;

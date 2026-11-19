@@ -11,15 +11,48 @@ function serializar(alumno) {
 
   const grupoRelacionado = gruposModel.findById(alumno.grupoId);
   if (!grupoRelacionado) {
-    return { ...alumno, grupo: null, grado: null, cicloEscolar: null };
+    return {
+      ...alumno,
+      grupo: {
+        id: Number(alumno.grupoId) || 0,
+        gradoId: '',
+        nombre: 'Sin grupo',
+        grupoLetra: 'A',
+        clave: 'SIN-GRUPO',
+        turno: 'matutino',
+        estado: 'Activo'
+      },
+      grado: {
+        id: '',
+        nombre: 'Sin grado',
+        nivel: 'Primaria',
+        numeroGrado: 1,
+        cicloEscolarId: 0
+      },
+      cicloEscolar: {
+        id: 0,
+        nombre: 'General',
+        estado: 'Activo'
+      }
+    };
   }
 
   const { grado, cicloEscolar, ...grupo } = grupoRelacionado;
   return {
     ...alumno,
     grupo,
-    grado: grado || null,
-    cicloEscolar: cicloEscolar || null
+    grado: grado || {
+      id: String(grupo.gradoId || ''),
+      nombre: grupo.gradoNombre || 'Sin grado',
+      nivel: 'Primaria',
+      numeroGrado: 1,
+      cicloEscolarId: 0
+    },
+    cicloEscolar: cicloEscolar || {
+      id: 0,
+      nombre: 'General',
+      estado: 'Activo'
+    }
   };
 }
 

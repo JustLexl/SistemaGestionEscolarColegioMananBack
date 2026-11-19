@@ -76,6 +76,19 @@ class ProfesoresController {
       next(error);
     }
   }
+
+  delete(req, res, next) {
+    try {
+      profesoresService.deleteProfesor(req.params.id);
+
+      res.status(200).json({
+        success: true,
+        message: `Profesor con ID ${req.params.id} eliminado correctamente.`
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new ProfesoresController();

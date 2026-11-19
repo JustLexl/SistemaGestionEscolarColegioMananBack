@@ -94,9 +94,14 @@ class ProfesoresService {
   }
 
   createProfesor(data = {}) {
-    this.validarAltaRelacionada(data, true);
+    if (data.usuarioId !== undefined && data.usuarioId !== null && data.usuarioId !== '') {
+      this.validarAltaRelacionada(data, true);
+    } else {
+      this.validarProfesor(data);
+      this.validarCedulaDisponible(data.cedula);
+    }
     return this.enriquecerProfesor(profesoresModel.create({
-      usuarioId: data.usuarioId,
+      usuarioId: data.usuarioId || null,
       nombre: data.nombre,
       cedula: data.cedula,
       estado: data.estado || 'Activo'
@@ -107,16 +112,48 @@ class ProfesoresService {
     const existing = this.getProfesorById(id);
     const updatedData = {
       nombre: data.nombre !== undefined ? data.nombre : existing.nombre,
-      cedula: data.cedula !== undefined ? data.cedula : existing.cedula
+      cedula: data.cedula !== undefined ? data.cedula : existing.cedula,
+      ...(data.estado !== undefined && { estado: data.estado })
     };
     this.validarProfesor(updatedData);
     this.validarCedulaDisponible(updatedData.cedula, existing.id);
-    return this.enriquecerProfesor(profesoresModel.update(id, updatedData));
+    const actualizado = profesoresModel.update(id, updatedData);
+    if (existing.usuarioId) {
+      rolesModel.update(existing.usuarioId, {
+        nombre: updatedData.nombre,
+        ...(data.estado !== undefined && { estado: data.estado })
+      });
+    }
+    return this.enriquecerProfesor(actualizado);
   }
 
   darDeBajaProfesor(id) {
     this.getProfesorById(id);
     return this.enriquecerProfesor(profesoresModel.darDeBaja(id));
+  }
+
+  deleteProfesor(id) {
+    const existing = this.getProfesorById(id);
+    const numericId = Number(existing.id);
+
+    for (const grupo of gruposModel.findByProfesorId(numericId)) {
+      gruposModel.update(grupo.id, {
+        profesorId: null,
+        profesorNombre: 'Profesor Sin Asignar',
+        profesorIniciales: 'SA',
+        cedula: 'Sin asignar'
+      });
+    }
+
+    for (const materia of materiasModel.findByProfesorId(numericId)) {
+      materiasModel.update(materia.id, { profesorId: null });
+    }
+
+    if (existing.usuarioId && rolesModel.findById(existing.usuarioId)) {
+      rolesModel.delete(existing.usuarioId);
+    }
+
+    return profesoresModel.delete(id);
   }
 
   sincronizarDesdeUsuario(usuario, cedula) {

@@ -83,7 +83,7 @@ class MateriasService {
     const profesor = materia.profesorId === null
       ? null
       : profesoresModel.findById(materia.profesorId);
-    const cicloEscolar = grupos[0]?.cicloEscolar || null;
+    const cicloEscolar = grupos[0]?.cicloEscolar || { id: 0, nombre: 'General', estado: 'Activo' };
 
     return {
       ...materia,
@@ -165,24 +165,11 @@ class MateriasService {
     }
     const cicloEscolar = grupos[0].cicloEscolar;
 
-    if (!existing && cicloEscolar.estado === ESTADOS_CICLO.FINALIZADO) {
-      throw crearError('No se pueden crear materias en un ciclo finalizado.', 409);
-    }
-    if (existing) {
-      const cicloActual = this.serializarMateria(existing).cicloEscolar;
-      if (Number(cicloActual?.id) !== Number(cicloEscolar.id)) {
-        throw crearError('No se puede mover una materia a otro ciclo escolar.', 409);
-      }
-    }
-
     const profesorId = normalizarProfesorId(
       Object.prototype.hasOwnProperty.call(data, 'profesorId')
         ? data.profesorId
         : existing?.profesorId
     );
-    if (profesorId === null && cicloEscolar.estado !== ESTADOS_CICLO.PLANEACION) {
-      throw crearError('Las materias del ciclo activo deben tener un profesor asignado.', 409);
-    }
     if (profesorId !== null) {
       const profesor = profesoresModel.findById(profesorId);
       if (!profesor) throw crearError(`El profesor con ID ${profesorId} no fue encontrado.`, 404);
@@ -217,35 +204,18 @@ class MateriasService {
   updateMateria(id, data) {
     const existing = materiasModel.findById(id);
     if (!existing) throw crearError(`La materia con ID ${id} no fue encontrada.`, 404);
-    const actual = this.serializarMateria(existing);
-    if (actual.cicloEscolar?.estado === ESTADOS_CICLO.FINALIZADO) {
-      throw crearError('Las materias de ciclos finalizados son de solo lectura.', 409);
-    }
-    if (
-      actual.cicloEscolar?.estado === ESTADOS_CICLO.ACTIVO &&
-      data.grupoIds !== undefined &&
-      !mismasRelaciones(existing.grupoIds, normalizarGrupoIds(data.grupoIds))
-    ) {
-      throw crearError('No se pueden cambiar los grupos de una materia del ciclo activo.', 409);
-    }
     return this.serializarMateria(
       materiasModel.update(id, this.prepararMateria(data, existing))
     );
   }
 
   deleteMateria(id) {
-    const materia = this.getMateriaById(id);
-    if (materia.cicloEscolar?.estado !== ESTADOS_CICLO.PLANEACION) {
-      throw crearError('Solo se pueden eliminar materias de ciclos en planeación.', 409);
-    }
+    this.getMateriaById(id);
     return materiasModel.delete(id);
   }
 
   darDeBajaMateria(id) {
-    const materia = this.getMateriaById(id);
-    if (materia.cicloEscolar?.estado === ESTADOS_CICLO.FINALIZADO) {
-      throw crearError('Las materias de ciclos finalizados son de solo lectura.', 409);
-    }
+    this.getMateriaById(id);
     return this.serializarMateria(materiasModel.darDeBaja(id));
   }
 

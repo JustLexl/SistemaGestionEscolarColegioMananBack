@@ -11,6 +11,10 @@ class UsuariosProfesoresService {
     ) + 1;
 
     if (esProfesor) {
+      const huerfano = profesoresService.getProfesorByUsuarioId(siguienteUsuarioId);
+      if (huerfano && !rolesModel.findById(siguienteUsuarioId)) {
+        profesoresService.eliminarProfesorInterno(huerfano.id);
+      }
       profesoresService.validarAltaRelacionada({
         usuarioId: siguienteUsuarioId,
         nombre: data.nombre,
@@ -90,10 +94,10 @@ class UsuariosProfesoresService {
 
   eliminarUsuario(id) {
     const profesor = profesoresService.getProfesorByUsuarioId(id);
-    if (profesor) {
-      profesoresService.setEstadoProfesor(profesor.id, 'Inactivo');
-    }
     rolesService.deleteRol(id);
+    if (profesor) {
+      profesoresService.deleteProfesor(profesor.id);
+    }
     return { profesor };
   }
 }

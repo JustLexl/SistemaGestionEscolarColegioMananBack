@@ -63,50 +63,22 @@ class GradosService {
 
   createGrado(data) {
     const preparado = this.validarGrado(data);
-    if (preparado.cicloEscolar.estado !== ESTADOS_CICLO.PLANEACION) {
-      throw crearError('Solo se pueden crear grados en ciclos escolares en planeación.', 409);
-    }
     const { cicloEscolar, ...persistible } = preparado;
     return gradosModel.create(persistible);
   }
 
   updateGrado(id, data) {
     const existing = this.getGradoById(id);
-    if (existing.cicloEscolar.estado === ESTADOS_CICLO.FINALIZADO) {
-      throw crearError('Los grados de un ciclo finalizado son de solo lectura.', 409);
-    }
-    if (
-      existing.cicloEscolar.estado === ESTADOS_CICLO.ACTIVO &&
-      data.cicloEscolarId !== undefined &&
-      Number(data.cicloEscolarId) !== Number(existing.cicloEscolarId)
-    ) {
-      throw crearError('No se puede cambiar el ciclo escolar de un grado activo.', 409);
-    }
-
     const preparado = this.validarGrado(data, existing);
-    if (
-      Number(preparado.cicloEscolarId) !== Number(existing.cicloEscolarId) &&
-      preparado.cicloEscolar.estado !== ESTADOS_CICLO.PLANEACION
-    ) {
-      throw crearError('El grado solo puede moverse a un ciclo en planeación.', 409);
-    }
-    const tieneGrupos = gruposModel.findAll().some(grupo => String(grupo.gradoId) === String(id));
-    if (tieneGrupos && Number(preparado.cicloEscolarId) !== Number(existing.cicloEscolarId)) {
-      throw crearError('No se puede cambiar de ciclo un grado que ya tiene grupos.', 409);
-    }
-
     const { cicloEscolar, ...persistible } = preparado;
     return gradosModel.update(id, persistible);
   }
 
   deleteGrado(id) {
-    const existing = this.getGradoById(id);
-    if (existing.cicloEscolar.estado !== ESTADOS_CICLO.PLANEACION) {
-      throw crearError('Solo se pueden eliminar grados de ciclos en planeación.', 409);
-    }
-    const tieneGrupos = gruposModel.findAll().some(grupo => String(grupo.gradoId) === String(id));
-    if (tieneGrupos) {
-      throw crearError('No se puede eliminar un grado que todavía tiene grupos registrados.', 409);
+    this.getGradoById(id);
+    const gruposRelacionados = gruposModel.findAll().filter(grupo => String(grupo.gradoId) === String(id));
+    for (const grupo of gruposRelacionados) {
+      gruposModel.delete(grupo.id);
     }
     return gradosModel.delete(id);
   }

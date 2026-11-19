@@ -48,6 +48,31 @@ app.get('/', (req, res) => {
   });
 });
 
+// Modelos para sincronización con MongoDB
+const allModels = {
+  rolesModel: require('./src/models/roles.model'),
+  profesoresModel: require('./src/models/profesores.model'),
+  ciclosModel: require('./src/models/ciclos-escolares.model'),
+  gradosModel: require('./src/models/grados.model'),
+  gruposModel: require('./src/models/grupos.model'),
+  materiasModel: require('./src/models/materias.model'),
+  alumnosModel: require('./src/models/alumnos.model'),
+  asistenciasModel: require('./src/models/asistencias.model'),
+  calificacionesModel: require('./src/models/calificaciones.model'),
+};
+
+// Sincronizar con MongoDB antes de procesar peticiones cuando la BD está conectada
+app.use('/api', async (req, res, next) => {
+  if (process.env.NODE_ENV !== 'test') {
+    try {
+      await mongoSync.hydrateModels(allModels);
+    } catch (err) {
+      console.warn('[MongoSync Middleware]:', err.message);
+    }
+  }
+  next();
+});
+
 // Montaje de rutas de la API
 app.use('/api', apiRoutes);
 

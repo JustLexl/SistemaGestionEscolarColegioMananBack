@@ -92,10 +92,11 @@ class GruposService {
       throw crearError('La matrícula actual debe estar entre 0 y la capacidad máxima.', 400);
     }
 
-    const sufijoCiclo = grado.cicloEscolar.nombre.match(/(\d{2})\D*$/)?.[1] || '00';
+    const sufijoCiclo = grado.cicloEscolar?.nombre?.match(/(\d{2})\D*$/)?.[1] || '26';
     const prefijoNivel = grado.nivel === 'Secundaria' ? 'SEC' : 'PRI';
+    const claveEntrada = typeof data.clave === 'string' && data.clave.trim() ? data.clave.trim() : null;
     const clave = String(
-      data.clave ?? existing?.clave ??
+      claveEntrada ?? existing?.clave ??
       `CM-${prefijoNivel}-${grado.numeroGrado}${grupoLetra}-${sufijoCiclo}`
     ).trim().toUpperCase();
     if (!clave) throw crearError('La clave del grupo es obligatoria.', 400);
@@ -133,9 +134,6 @@ class GruposService {
 
   createGrupo(data) {
     const preparado = this.prepararGrupo(data);
-    if (preparado.grado.cicloEscolar.estado !== ESTADOS_CICLO.PLANEACION) {
-      throw crearError('Solo se pueden crear grupos en grados de ciclos en planeación.', 409);
-    }
     this.validarDuplicados(preparado);
     const { grado, ...persistible } = preparado;
     return gruposModel.create(persistible);
@@ -143,42 +141,19 @@ class GruposService {
 
   updateGrupo(id, data) {
     const existing = this.getGrupoById(id);
-    const estadoCiclo = existing.cicloEscolar.estado;
-    if (estadoCiclo === ESTADOS_CICLO.FINALIZADO) {
-      throw crearError('Los grupos de un ciclo finalizado son de solo lectura.', 409);
-    }
-    if (
-      estadoCiclo === ESTADOS_CICLO.ACTIVO &&
-      data.gradoId !== undefined && String(data.gradoId) !== String(existing.gradoId)
-    ) {
-      throw crearError('No se puede cambiar el grado ni el ciclo de un grupo activo.', 409);
-    }
-
     const preparado = this.prepararGrupo(data, existing);
-    if (
-      estadoCiclo === ESTADOS_CICLO.PLANEACION &&
-      Number(preparado.grado.cicloEscolarId) !== Number(existing.cicloEscolarId)
-    ) {
-      throw crearError('Un grupo en planeación solo puede cambiar de grado dentro del mismo ciclo.', 409);
-    }
     this.validarDuplicados(preparado, existing.id);
     const { grado, ...persistible } = preparado;
     return gruposModel.update(id, persistible);
   }
 
   deleteGrupo(id) {
-    const existing = this.getGrupoById(id);
-    if (existing.cicloEscolar.estado !== ESTADOS_CICLO.PLANEACION) {
-      throw crearError('Solo se pueden eliminar grupos de ciclos en planeación.', 409);
-    }
+    this.getGrupoById(id);
     return gruposModel.delete(id);
   }
 
   toggleGrupoEstado(id) {
-    const existing = this.getGrupoById(id);
-    if (existing.cicloEscolar.estado === ESTADOS_CICLO.FINALIZADO) {
-      throw crearError('Los grupos de un ciclo finalizado son de solo lectura.', 409);
-    }
+    this.getGrupoById(id);
     return gruposModel.toggleEstado(id);
   }
 

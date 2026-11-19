@@ -71,13 +71,12 @@ class CiclosEscolaresService {
 
   update(id, data) {
     const existing = this.getById(id);
-    if (existing.estado !== ESTADOS_CICLO.PLANEACION) {
-      throw crearError(
-        'Este ciclo escolar ya inició o finalizó. Su nombre y sus fechas no pueden modificarse.',
-        409
-      );
-    }
     return ciclosModel.update(id, this.validar(data, existing));
+  }
+
+  delete(id) {
+    this.getById(id);
+    return ciclosModel.delete(id);
   }
 }
 
