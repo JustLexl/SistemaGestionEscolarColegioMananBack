@@ -1,6 +1,7 @@
 const gruposModel = require('../models/grupos.model');
 const gradosModel = require('../models/grados.model');
 const profesoresModel = require('../models/profesores.model');
+const alumnosModel = require('../models/alumnos.model');
 const { ESTADOS_CICLO } = require('../utils/ciclo-escolar');
 
 const TURNOS_PERMITIDOS = ['matutino', 'vespertino'];
@@ -37,14 +38,27 @@ function normalizarProfesorId(valor) {
 }
 
 class GruposService {
+  enriquecerConMatricula(grupo) {
+    if (!grupo) return grupo;
+    const listaAlumnos = Array.isArray(alumnosModel.alumnos) ? alumnosModel.alumnos : [];
+    const conteoReal = listaAlumnos.filter(
+      alumno => Number(alumno.grupoId) === Number(grupo.id) && alumno.estado !== 'Inactivo'
+    ).length;
+    const alumnosActuales = conteoReal > 0 ? conteoReal : (Number(grupo.alumnosActuales) || 0);
+    return {
+      ...grupo,
+      alumnosActuales
+    };
+  }
+
   getAllGrupos(filters) {
-    return gruposModel.findAll(filters);
+    return gruposModel.findAll(filters).map(g => this.enriquecerConMatricula(g));
   }
 
   getGrupoById(id) {
     const grupo = gruposModel.findById(id);
     if (!grupo) throw crearError(`El grupo con ID ${id} no fue encontrado.`, 404);
-    return grupo;
+    return this.enriquecerConMatricula(grupo);
   }
 
   prepararGrupo(data = {}, existing = null) {
@@ -158,7 +172,24 @@ class GruposService {
   }
 
   getGruposMetrics() {
-    return gruposModel.getMetrics();
+    const grupos = this.getAllGrupos();
+    const total = grupos.length;
+    const activos = grupos.filter(g => g.estado === 'Activo').length;
+    const gradosCount = new Set(grupos.map(g => g.gradoId)).size;
+    const aulasCount = new Set(grupos.map(g => g.aula)).size;
+    const matriculaTotal = grupos.reduce(
+      (acc, g) => acc + (g.estado === 'Activo' ? (Number(g.alumnosActuales) || 0) : 0),
+      0
+    );
+    const promedioAlumnos = activos > 0 ? Math.round(matriculaTotal / activos) : 0;
+    return {
+      total,
+      activos,
+      gradosCount,
+      aulasCount,
+      matriculaTotal,
+      promedioAlumnos
+    };
   }
 }
 

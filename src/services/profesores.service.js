@@ -26,20 +26,30 @@ class ProfesoresService {
   }
 
   enriquecerProfesor(profesor) {
-    const grupos = gruposModel.findByProfesorId(profesor.id).map(grupo => {
-      const gradoCorto = String(grupo.gradoNombre || '')
-        .replace(/\s+(Primaria|Grado)$/i, '')
-        .trim();
-      return `${gradoCorto} ${grupo.grupoLetra}`.trim();
-    });
-    const materias = materiasModel.findByProfesorId(profesor.id).map(
-      materia => materia.nombre
+    const gruposTitular = gruposModel.findByProfesorId(profesor.id);
+    const materias = materiasModel.findByProfesorId(profesor.id);
+    const gruposPorMateria = materias.flatMap(m =>
+      (m.grupoIds || []).map(id => gruposModel.findById(id)).filter(Boolean)
     );
+    const etiquetasGrupos = [];
+    const vistos = new Set();
+    for (const grupo of [...gruposTitular, ...gruposPorMateria]) {
+      if (!grupo) continue;
+      const gradoBase = String(grupo.grado?.nombre || grupo.gradoNombre || '')
+        .replace(/\s+(Primaria|Secundaria|Grado)$/i, '')
+        .trim();
+      const letra = String(grupo.grupoLetra || '').trim().toUpperCase();
+      const etiqueta = `${gradoBase} ${letra}`.trim();
+      if (etiqueta && !vistos.has(etiqueta)) {
+        vistos.add(etiqueta);
+        etiquetasGrupos.push(etiqueta);
+      }
+    }
 
     return {
       ...profesor,
-      grupos,
-      materias
+      grupos: etiquetasGrupos,
+      materias: materias.map(materia => materia.nombre)
     };
   }
 
